@@ -230,6 +230,33 @@
     </footer>
   </div>
 
+  <div class="modal-backdrop" id="aboutModal" hidden>
+    <article class="about-card" aria-labelledby="aboutProductName">
+      <button class="modal-close about-close" data-close-modal aria-label="关闭关于页面"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      <div class="about-identity">
+        <div class="about-product-mark"><span>Y</span><i></i></div>
+        <div>
+          <span class="about-kicker">ABOUT YUVIS MUSIC</span>
+          <h2 id="aboutProductName">Yuvis音乐</h2>
+          <p>一款克制、专注且尊重隐私的 Windows 本地音乐播放器。</p>
+        </div>
+      </div>
+      <div class="about-story">
+        <strong>让音乐留在你的设备，也留在你的生活里。</strong>
+        <p>Yuvis音乐围绕本地音乐管理、沉浸播放、同步歌词、听歌统计和智能助手打造。音乐文件、收藏、歌单与应用设置均保存在本机。</p>
+      </div>
+      <div class="about-info-grid">
+        <div><span>制作人</span><strong>Yuvis</strong></div>
+        <div><span>当前版本</span><strong>1.0.0</strong></div>
+        <div><span>运行平台</span><strong>Windows</strong></div>
+        <div><span>产品定位</span><strong>本地音乐播放器</strong></div>
+      </div>
+      <footer class="about-footer">
+        <span><i></i>LOCAL FIRST</span><span><i></i>PRIVACY FRIENDLY</span><span><i></i>MADE BY YUVIS</span>
+      </footer>
+    </article>
+  </div>
+
   <div class="modal-backdrop" id="equalizerModal" hidden>
     <div class="equalizer-card">
       <header class="equalizer-header">
@@ -389,9 +416,6 @@
           <div class="shortcut-row"><span>播放 / 暂停</span><kbd>Space</kbd></div>
           <div class="shortcut-row"><span>聚焦搜索</span><kbd>Ctrl</kbd><b>+</b><kbd>K</kbd></div>
           <div class="reserved-inline"><i></i>自定义快捷键入口已预留</div>
-        </div>
-        <div class="settings-panel about-panel" data-settings-panel="about" hidden>
-          <div class="about-mark"><span>Y</span></div><h4>Yuvis音乐</h4><p>版本 1.0.0 · Windows 本地音乐播放器</p><small>你的音乐与设置都只保存在本机。</small>
         </div>
       </section>
     </div>

@@ -744,8 +744,7 @@ function showSettingsSection(section) {
     appearance: ['外观设置', '选择应用界面的主题主色'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型'],
     aiDocs: ['AI 对接文档', '查看模型可以操作的软件功能与工具接口'],
-    shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口'],
-    about: ['关于 Yuvis音乐', '本地、纯粹、专注于你的音乐']
+    shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口']
   };
   state.settingsSection = names[section] ? section : 'playback';
   $('#settingsTitle').textContent = names[state.settingsSection][0];
@@ -1873,7 +1872,10 @@ $('#fontSizeOptions').addEventListener('click', (event) => {
 $('#equalizerBtn').addEventListener('click', openEqualizer);
 $('#aiDocsTitleBtn').addEventListener('click', () => openSettings('aiDocs'));
 $('#shortcutsTitleBtn').addEventListener('click', () => openSettings('shortcuts'));
-$('#aboutTitleBtn').addEventListener('click', () => openSettings('about'));
+$('#aboutTitleBtn').addEventListener('click', () => {
+  closeModals();
+  openModal($('#aboutModal'));
+});
 $('#equalizerEnabledInput').addEventListener('change', (event) => {
   state.equalizerSettings.enabled = event.target.checked;
   applyEqualizerSettings({ render: false });
