@@ -6,8 +6,6 @@ contextBridge.exposeInMainWorld('desktop', {
   restoreTracks: (paths) => ipcRenderer.invoke('library:restore', paths),
   chooseLyricsFile: () => ipcRenderer.invoke('lyrics:choose-file'),
   readLyricsFile: (lyricsPath) => ipcRenderer.invoke('lyrics:read-file', lyricsPath),
-  chooseBackgroundImage: () => ipcRenderer.invoke('appearance:choose-background'),
-  readBackgroundImage: (imagePath) => ipcRenderer.invoke('appearance:read-background', imagePath),
   showInFolder: (filePath) => ipcRenderer.invoke('track:show-in-folder', filePath),
   setDesktopLyricsVisible: (visible) => ipcRenderer.send('desktop-lyrics:set-visible', visible),
   updateDesktopLyrics: (payload) => ipcRenderer.send('desktop-lyrics:update', payload),

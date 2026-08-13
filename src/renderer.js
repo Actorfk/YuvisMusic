@@ -49,10 +49,7 @@ const state = {
     secondaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.secondaryColor) ? savedDesktopLyricsSettings.secondaryColor : '#ffffff'
   },
   appearanceSettings: {
-    theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson',
-    backgroundPath: typeof savedAppearanceSettings.backgroundPath === 'string' ? savedAppearanceSettings.backgroundPath : '',
-    backgroundName: typeof savedAppearanceSettings.backgroundName === 'string' ? savedAppearanceSettings.backgroundName : '',
-    backgroundDataUrl: ''
+    theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson'
   },
   playerOpen: false,
   playerCloseTimer: null,
@@ -353,9 +350,7 @@ function persistAppSettings() {
     repeat: state.repeat,
     desktopLyrics: state.desktopLyricsSettings,
     appearance: {
-      theme: state.appearanceSettings.theme,
-      backgroundPath: state.appearanceSettings.backgroundPath,
-      backgroundName: state.appearanceSettings.backgroundName
+      theme: state.appearanceSettings.theme
     }
   }));
 }
@@ -365,17 +360,6 @@ function renderAppearanceSettings() {
   $('#appearanceThemeOptions').querySelectorAll('[data-theme]').forEach((button) => {
     button.classList.toggle('active', button.dataset.theme === settings.theme);
   });
-  const hasBackground = Boolean(settings.backgroundDataUrl);
-  const preview = $('#appearanceBackgroundPreview');
-  preview.classList.toggle('has-image', hasBackground);
-  preview.style.backgroundImage = hasBackground ? `url("${settings.backgroundDataUrl}")` : '';
-  preview.querySelector('span').textContent = hasBackground ? '当前背景' : '默认纯色背景';
-  $('#appearanceBackgroundName').textContent = hasBackground
-    ? (settings.backgroundName || '已选择背景图片')
-    : settings.backgroundPath
-      ? `${settings.backgroundName || '原图片'} · 暂时无法读取`
-      : '尚未选择图片';
-  $('#resetBackgroundBtn').hidden = !settings.backgroundPath;
 }
 
 function applyAppearanceSettings({ persist = true } = {}) {
@@ -386,22 +370,8 @@ function applyAppearanceSettings({ persist = true } = {}) {
   rootStyle.setProperty('--accent-bright', theme.bright);
   rootStyle.setProperty('--accent-soft', theme.soft);
   rootStyle.setProperty('--accent-rgb', theme.rgb);
-  const hasBackground = Boolean(settings.backgroundDataUrl);
-  rootStyle.setProperty('--app-background-image', hasBackground ? `url("${settings.backgroundDataUrl}")` : 'none');
-  document.body.dataset.customBackground = String(hasBackground);
   if (persist) persistAppSettings();
   renderAppearanceSettings();
-}
-
-async function restoreAppearanceBackground() {
-  const imagePath = state.appearanceSettings.backgroundPath;
-  if (!imagePath) return renderAppearanceSettings();
-  const result = await window.desktop.readBackgroundImage(imagePath);
-  if (result?.dataUrl) {
-    state.appearanceSettings.backgroundName = result.name;
-    state.appearanceSettings.backgroundDataUrl = result.dataUrl;
-  }
-  applyAppearanceSettings({ persist: false });
 }
 
 function desktopLyricsPayload(index = state.activeLyricIndex) {
@@ -487,7 +457,7 @@ function showSettingsSection(section) {
   const names = {
     playback: ['播放设置', '控制音量与默认播放行为'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
-    appearance: ['外观设置', '选择主题主色与应用背景图片'],
+    appearance: ['外观设置', '选择应用界面的主题主色'],
     shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口'],
     about: ['关于 Yuvis音乐', '本地、纯粹、专注于你的音乐']
   };
@@ -929,7 +899,7 @@ async function importFiles() {
 }
 
 async function importFolder() {
-  showToast('正在扫描音乐文件夹…');
+  showToast('正在导入本地音乐…');
   const tracks = await window.desktop.chooseFolder();
   if (tracks.length) mergeTracks(tracks); else showToast('未找到可播放的音频文件');
 }
@@ -1152,23 +1122,6 @@ $('#appearanceThemeOptions').addEventListener('click', (event) => {
   state.appearanceSettings.theme = button.dataset.theme;
   applyAppearanceSettings();
   showToast('主题主色已更新');
-});
-$('#chooseBackgroundBtn').addEventListener('click', async () => {
-  const result = await window.desktop.chooseBackgroundImage();
-  if (result?.error) return showToast(result.error);
-  if (!result?.dataUrl) return;
-  state.appearanceSettings.backgroundPath = result.path;
-  state.appearanceSettings.backgroundName = result.name;
-  state.appearanceSettings.backgroundDataUrl = result.dataUrl;
-  applyAppearanceSettings();
-  showToast('应用背景已更新');
-});
-$('#resetBackgroundBtn').addEventListener('click', () => {
-  state.appearanceSettings.backgroundPath = '';
-  state.appearanceSettings.backgroundName = '';
-  state.appearanceSettings.backgroundDataUrl = '';
-  applyAppearanceSettings();
-  showToast('已恢复默认背景');
 });
 $('#desktopLyricsEnabledInput').addEventListener('change', (event) => {
   state.desktopLyricsSettings.enabled = event.target.checked;
@@ -1431,7 +1384,6 @@ window.desktop.onDesktopLyricsSettings((settings) => {
 
 async function init() {
   applyAppearanceSettings({ persist: false });
-  await restoreAppearanceBackground();
   applyPlaybackSettings();
   applyDesktopLyricsSettings();
   renderView();
