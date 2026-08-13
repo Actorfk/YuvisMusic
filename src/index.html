@@ -48,6 +48,10 @@
             <svg viewBox="0 0 24 24"><path d="M12 7v5l3.5 2M4.9 19.1A10 10 0 1 0 2 12" /><path d="M2 7v5h5" /></svg>
             <span>最近播放</span>
           </button>
+          <button class="nav-item" data-view="assistant">
+            <svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+            <span>Yuvis 助手</span>
+          </button>
           <button class="nav-item" data-view="stats">
             <svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-9"/><path d="M3 19h18"/></svg>
             <span>统计数据</span>
@@ -150,6 +154,25 @@
         </section>
 
         <section class="stats-section" id="statsSection" hidden></section>
+
+        <section class="assistant-section" id="assistantSection" hidden>
+          <div class="assistant-welcome" id="assistantWelcome">
+            <div class="assistant-mark"><span>Y</span></div>
+            <h3>你好，我是 Yuvis 助手</h3>
+            <p>我可以帮你查找歌曲、控制播放、整理队列和歌单，也能读取你的本地听歌统计。</p>
+            <div class="assistant-suggestions">
+              <button data-assistant-prompt="播放一首我喜欢的歌曲">播放喜欢的歌</button>
+              <button data-assistant-prompt="总结一下我的音乐库">总结音乐库</button>
+              <button data-assistant-prompt="查看今天的听歌情况">今日听歌情况</button>
+            </div>
+          </div>
+          <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+          <form class="assistant-composer" id="assistantForm">
+            <textarea id="assistantInput" rows="1" maxlength="2000" placeholder="让 Yuvis 帮你播放、查找或整理音乐…"></textarea>
+            <button id="assistantSendBtn" type="submit" aria-label="发送"><svg viewBox="0 0 24 24"><path d="m5 12 14-7-4 14-3-5z"/><path d="m12 14 7-9"/></svg></button>
+          </form>
+          <div class="assistant-config-hint" id="assistantConfigHint" hidden>请先在“设置 → Yuvis 配置”中填写模型信息。<button id="openAssistantConfigBtn">打开设置</button></div>
+        </section>
       </main>
 
       <aside class="queue-panel" id="queuePanel" aria-label="播放列表">
@@ -215,6 +238,7 @@
           <button class="active" data-settings-section="playback"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z"/></svg><span>播放</span></button>
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
           <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
+          <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
           <button data-settings-section="shortcuts"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h7"/></svg><span>快捷键</span></button>
           <button data-settings-section="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>关于</span></button>
         </nav>
@@ -281,6 +305,15 @@
             <button data-theme="rose"><i></i><span>玫瑰</span></button>
           </div>
           <div class="settings-save-note"><i></i><span>主题主色会立即生效并自动保存在本机。</span></div>
+        </div>
+        <div class="settings-panel yuvis-config-panel" data-settings-panel="yuvis" hidden>
+          <div class="yuvis-config-intro"><span>Y</span><div><strong>连接你的模型</strong><small>支持 OpenAI Chat Completions 兼容接口和工具调用。</small></div></div>
+          <label class="yuvis-config-field"><span>模型名称</span><input id="assistantModelInput" autocomplete="off" placeholder="例如：gpt-5.2 或本地模型名" /></label>
+          <label class="yuvis-config-field"><span>模型地址</span><input id="assistantBaseUrlInput" autocomplete="off" placeholder="https://api.openai.com/v1" /></label>
+          <label class="yuvis-config-field"><span>API Key</span><input id="assistantApiKeyInput" type="password" autocomplete="new-password" placeholder="输入新的 API Key" /></label>
+          <div class="yuvis-config-status"><span id="assistantKeyStatus">尚未保存 API Key</span><button id="clearAssistantKeyBtn" type="button" hidden>清除密钥</button></div>
+          <button class="yuvis-config-save" id="saveAssistantConfigBtn" type="button">保存 Yuvis 配置</button>
+          <div class="settings-save-note"><i></i><span>API Key 只由主进程读取；Windows 支持时会使用系统加密保护，不会回显到页面。</span></div>
         </div>
         <div class="settings-panel shortcuts-panel" data-settings-panel="shortcuts" hidden>
           <div class="shortcut-row"><span>播放 / 暂停</span><kbd>Space</kbd></div>

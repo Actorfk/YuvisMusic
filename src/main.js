@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
@@ -12,6 +12,7 @@ let desktopLyricsWindow;
 let desktopLyricsVisible = false;
 let desktopLyricsPayload = null;
 let desktopLyricsDragState = null;
+let assistantConfigCache = null;
 let desktopLyricsSettings = {
   dualLine: true,
   locked: false,
@@ -19,6 +20,50 @@ let desktopLyricsSettings = {
   primaryColor: '#ff3156',
   secondaryColor: '#ffffff'
 };
+
+function assistantConfigPath() {
+  return path.join(app.getPath('userData'), 'yuvis-assistant.json');
+}
+
+async function readAssistantConfig() {
+  if (assistantConfigCache) return assistantConfigCache;
+  try {
+    const saved = JSON.parse(await fs.readFile(assistantConfigPath(), 'utf8'));
+    assistantConfigCache = saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    assistantConfigCache = {};
+  }
+  return assistantConfigCache;
+}
+
+function assistantApiKey(config) {
+  try {
+    if (config.encryptedApiKey && safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
+    }
+  } catch (error) {
+    console.warn('Unable to decrypt Yuvis assistant API key:', error.message);
+  }
+  return typeof config.apiKey === 'string' ? config.apiKey : '';
+}
+
+function publicAssistantConfig(config) {
+  const apiKey = assistantApiKey(config);
+  return {
+    model: typeof config.model === 'string' ? config.model : '',
+    baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : 'https://api.openai.com/v1',
+    hasApiKey: Boolean(apiKey),
+    apiKeyProtected: Boolean(config.encryptedApiKey)
+  };
+}
+
+function assistantChatEndpoint(baseUrl) {
+  const url = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('模型地址必须使用 HTTP 或 HTTPS');
+  const pathname = url.pathname.replace(/\/+$/, '');
+  url.pathname = pathname.endsWith('/chat/completions') ? pathname : `${pathname}/chat/completions`;
+  return url.toString();
+}
 
 async function pathExists(targetPath) {
   try {
@@ -317,6 +362,77 @@ ipcMain.handle('lyrics:read-file', async (_event, lyricsPath) => {
     return { path: lyricsPath, name: path.basename(lyricsPath), text: await readTextFile(lyricsPath) };
   } catch {
     return null;
+  }
+});
+
+ipcMain.handle('assistant:get-config', async () => publicAssistantConfig(await readAssistantConfig()));
+
+ipcMain.handle('assistant:save-config', async (_event, nextConfig) => {
+  const current = await readAssistantConfig();
+  const model = String(nextConfig?.model || '').trim().slice(0, 200);
+  const baseUrl = String(nextConfig?.baseUrl || '').trim().slice(0, 2048);
+  if (baseUrl) assistantChatEndpoint(baseUrl);
+  const saved = {
+    model,
+    baseUrl: baseUrl || 'https://api.openai.com/v1'
+  };
+  if (!nextConfig?.clearApiKey) {
+    const newApiKey = typeof nextConfig?.apiKey === 'string' ? nextConfig.apiKey.trim() : '';
+    if (newApiKey) {
+      if (safeStorage.isEncryptionAvailable()) {
+        saved.encryptedApiKey = safeStorage.encryptString(newApiKey).toString('base64');
+      } else {
+        saved.apiKey = newApiKey;
+      }
+    } else if (current.encryptedApiKey) {
+      saved.encryptedApiKey = current.encryptedApiKey;
+    } else if (current.apiKey) {
+      saved.apiKey = current.apiKey;
+    }
+  }
+  await fs.writeFile(assistantConfigPath(), JSON.stringify(saved, null, 2), 'utf8');
+  assistantConfigCache = saved;
+  return publicAssistantConfig(saved);
+});
+
+ipcMain.handle('assistant:complete', async (_event, payload) => {
+  const config = await readAssistantConfig();
+  const model = String(config.model || '').trim();
+  const baseUrl = String(config.baseUrl || '').trim();
+  if (!model || !baseUrl) throw new Error('请先在设置中完成 Yuvis 配置');
+  const messages = Array.isArray(payload?.messages) ? payload.messages.slice(-40) : [];
+  const tools = Array.isArray(payload?.tools) ? payload.tools.slice(0, 30) : [];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const apiKey = assistantApiKey(config);
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const response = await fetch(assistantChatEndpoint(baseUrl), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model, messages, tools, tool_choice: 'auto', temperature: 0.4 }),
+      signal: controller.signal
+    });
+    const responseText = await response.text();
+    let data = null;
+    try { data = JSON.parse(responseText); } catch { data = null; }
+    if (!response.ok) {
+      const detail = data?.error?.message || data?.message || responseText || `HTTP ${response.status}`;
+      throw new Error(`模型请求失败：${String(detail).slice(0, 500)}`);
+    }
+    const message = data?.choices?.[0]?.message;
+    if (!message || typeof message !== 'object') throw new Error('模型没有返回有效回复');
+    return {
+      role: 'assistant',
+      content: typeof message.content === 'string' ? message.content : '',
+      tool_calls: Array.isArray(message.tool_calls) ? message.tool_calls : []
+    };
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('模型请求超时，请检查模型地址或网络');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 });
 

@@ -10,6 +10,38 @@ const APPEARANCE_THEMES = {
   rose: { color: '#bd3f70', bright: '#d44d83', soft: '#fff0f6', rgb: '189, 63, 112' }
 };
 
+const ASSISTANT_SYSTEM_PROMPT = `你是 Yuvis 音乐播放器里的中文助手。你可以通过工具读取本地音乐状态并控制播放器。
+需要操作或查询软件时必须使用工具，不要假装操作成功。工具只影响用户本机的播放器。
+回答应自然、简洁；执行操作后说明结果。不要声称能访问工具没有返回的信息。`;
+
+const ASSISTANT_TOOLS = [
+  { type: 'function', function: { name: 'get_player_state', description: '读取当前歌曲、播放状态、音量、循环和随机状态', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'control_playback', description: '播放、暂停或切换播放状态', parameters: { type: 'object', properties: { action: { type: 'string', enum: ['play', 'pause', 'toggle'] } }, required: ['action'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'next_track', description: '播放下一首歌曲', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'previous_track', description: '播放上一首歌曲', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'play_track', description: '按照歌曲名或艺术家查找并播放本地音乐', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'search_library', description: '搜索本地音乐库并返回匹配歌曲', parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 20 } }, required: ['query'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_favorite_tracks', description: '读取用户喜欢的歌曲，便于选择并播放', parameters: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 30 } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_recent_tracks', description: '读取最近播放的歌曲', parameters: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 30 } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_library_summary', description: '读取音乐库歌曲数、艺术家数、专辑数、喜欢数和总时长', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_current_lyrics', description: '读取当前歌曲的歌词；没有歌词时会返回明确提示', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'set_volume', description: '设置播放器音量百分比并取消静音', parameters: { type: 'object', properties: { percent: { type: 'number', minimum: 0, maximum: 100 } }, required: ['percent'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'seek_to', description: '跳转到当前歌曲的指定秒数', parameters: { type: 'object', properties: { seconds: { type: 'number', minimum: 0 } }, required: ['seconds'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'set_repeat', description: '设置循环方式', parameters: { type: 'object', properties: { mode: { type: 'string', enum: ['off', 'all', 'one'] } }, required: ['mode'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'set_shuffle', description: '开启或关闭随机播放', parameters: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_queue', description: '读取当前播放队列', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'add_to_queue', description: '按歌曲名或艺术家查找歌曲并加入播放队列', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'remove_from_queue', description: '按歌曲名或艺术家从播放队列移出一首歌曲', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'clear_queue', description: '清空播放队列；不会停止当前正在播放的歌曲', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'set_current_favorite', description: '设置当前歌曲是否为喜欢', parameters: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_playlists', description: '读取用户歌单及歌曲数量', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'create_playlist', description: '创建一个新的空歌单', parameters: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 30 } }, required: ['name'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'play_playlist', description: '按名称播放一个歌单', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'add_current_to_playlist', description: '把当前歌曲添加到指定歌单', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_listening_statistics', description: '读取本日、本周、本月和年度的听歌时长与有效歌曲数', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'set_desktop_lyrics', description: '开启或关闭桌面歌词', parameters: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false } } }
+];
+
 function readStorage(key, fallback) {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -51,6 +83,9 @@ const state = {
   appearanceSettings: {
     theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson'
   },
+  assistantConfig: { model: '', baseUrl: 'https://api.openai.com/v1', hasApiKey: false, apiKeyProtected: false, loaded: false },
+  assistantMessages: [],
+  assistantBusy: false,
   playerOpen: false,
   playerCloseTimer: null,
   activePlaylistId: null,
@@ -71,6 +106,7 @@ const viewNames = {
   library: ['你的私人音乐空间', '音乐库', '全部音乐'],
   favorite: ['珍藏每一次心动', '我的喜欢', '喜欢的音乐'],
   recent: ['让熟悉的旋律再次响起', '最近播放', '播放记录'],
+  assistant: ['你的本地音乐搭档', 'Yuvis 助手', '智能控制与音乐问答'],
   stats: ['听见你的音乐轨迹', '统计数据', '音乐概览']
 };
 
@@ -458,6 +494,7 @@ function showSettingsSection(section) {
     playback: ['播放设置', '控制音量与默认播放行为'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
+    yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型'],
     shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口'],
     about: ['关于 Yuvis音乐', '本地、纯粹、专注于你的音乐']
   };
@@ -476,6 +513,7 @@ function openSettings(section = 'playback') {
   renderPlaybackSettings();
   renderDesktopLyricsSettings();
   renderAppearanceSettings();
+  renderAssistantConfig();
   showSettingsSection(section);
   openModal($('#settingsModal'));
 }
@@ -815,6 +853,335 @@ function updateStats() {
   if (state.view === 'stats') renderStatistics();
 }
 
+function assistantTrack(track) {
+  return track ? {
+    title: track.title,
+    artist: track.artist,
+    album: track.album,
+    durationSeconds: Math.round(Number(track.duration) || 0),
+    favorite: state.favorites.has(track.id)
+  } : null;
+}
+
+function findAssistantTracks(query, limit = 10) {
+  const normalizedQuery = String(query || '').trim().toLocaleLowerCase('zh-CN');
+  if (!normalizedQuery) return [];
+  return state.library
+    .map((track) => {
+      const title = track.title.toLocaleLowerCase('zh-CN');
+      const artist = track.artist.toLocaleLowerCase('zh-CN');
+      const album = track.album.toLocaleLowerCase('zh-CN');
+      const score = title === normalizedQuery ? 0
+        : title.startsWith(normalizedQuery) ? 1
+          : artist === normalizedQuery ? 2
+            : title.includes(normalizedQuery) ? 3
+              : artist.includes(normalizedQuery) ? 4
+                : album.includes(normalizedQuery) ? 5 : 99;
+      return { track, score };
+    })
+    .filter((item) => item.score < 99)
+    .sort((a, b) => a.score - b.score || a.track.title.localeCompare(b.track.title, 'zh-CN'))
+    .slice(0, Math.max(1, Math.min(20, Number(limit) || 10)))
+    .map((item) => item.track);
+}
+
+async function executeAssistantTool(name, args = {}) {
+  if (name === 'get_player_state') {
+    return {
+      track: assistantTrack(currentTrack()),
+      playing: Boolean(state.currentId && !audio.paused),
+      currentSeconds: Math.round(audio.currentTime || 0),
+      volumePercent: Math.round(state.volume * 100),
+      muted: state.muted,
+      repeat: state.repeat,
+      shuffle: state.shuffle
+    };
+  }
+  if (name === 'control_playback') {
+    if (args.action === 'pause') audio.pause();
+    else if (args.action === 'toggle') togglePlay();
+    else if (!state.currentId) togglePlay();
+    else await audio.play();
+    return { ok: true, playing: !audio.paused, track: assistantTrack(currentTrack()) };
+  }
+  if (name === 'next_track' || name === 'previous_track') {
+    nextTrack(name === 'next_track' ? 1 : -1);
+    return { ok: true, track: assistantTrack(currentTrack()) };
+  }
+  if (name === 'play_track') {
+    const track = findAssistantTracks(args.query, 1)[0];
+    if (!track) return { ok: false, error: '音乐库中没有找到匹配歌曲' };
+    if (!state.queue.some((item) => trackPathKey(item.path) === trackPathKey(track.path))) state.queue.push(track);
+    loadTrack(track);
+    return { ok: true, track: assistantTrack(track) };
+  }
+  if (name === 'search_library') {
+    const tracks = findAssistantTracks(args.query, args.limit);
+    return { count: tracks.length, tracks: tracks.map(assistantTrack) };
+  }
+  if (name === 'get_favorite_tracks') {
+    const limit = Math.max(1, Math.min(30, Number(args.limit) || 20));
+    const tracks = state.library.filter((track) => state.favorites.has(track.id)).slice(0, limit);
+    return { count: tracks.length, tracks: tracks.map(assistantTrack) };
+  }
+  if (name === 'get_recent_tracks') {
+    const limit = Math.max(1, Math.min(30, Number(args.limit) || 20));
+    const trackMap = new Map(state.library.map((track) => [track.id, track]));
+    const tracks = state.history.map((id) => trackMap.get(id)).filter(Boolean).slice(0, limit);
+    return { count: tracks.length, tracks: tracks.map(assistantTrack) };
+  }
+  if (name === 'get_library_summary') {
+    return {
+      tracks: state.library.length,
+      favorites: state.library.filter((track) => state.favorites.has(track.id)).length,
+      artists: new Set(state.library.map((track) => track.artist)).size,
+      albums: new Set(state.library.map((track) => track.album)).size,
+      totalDurationSeconds: Math.round(state.library.reduce((sum, track) => sum + (Number(track.duration) || 0), 0)),
+      playlists: state.playlists.length
+    };
+  }
+  if (name === 'get_current_lyrics') {
+    const track = currentTrack();
+    if (!track) return { ok: false, error: '当前没有播放歌曲' };
+    if (!state.currentLyrics?.lines?.length) return { ok: false, error: '当前歌曲没有歌词', track: assistantTrack(track) };
+    const lyrics = state.currentLyrics.lines.slice(0, 200).map((line) => ({
+      timeSeconds: Number.isFinite(line.time) ? Math.round(line.time * 10) / 10 : null,
+      text: line.translation ? `${line.text} / ${line.translation}` : line.text
+    }));
+    return { ok: true, track: assistantTrack(track), synced: state.currentLyrics.synced, truncated: state.currentLyrics.lines.length > lyrics.length, lyrics };
+  }
+  if (name === 'set_volume') {
+    state.volume = Math.max(0, Math.min(1, (Number(args.percent) || 0) / 100));
+    state.muted = false;
+    applyPlaybackSettings();
+    return { ok: true, volumePercent: Math.round(state.volume * 100) };
+  }
+  if (name === 'seek_to') {
+    if (!state.currentId) return { ok: false, error: '当前没有播放歌曲' };
+    const requested = Math.max(0, Number(args.seconds) || 0);
+    audio.currentTime = Number.isFinite(audio.duration) ? Math.min(requested, audio.duration) : requested;
+    updatePlaybackProgress();
+    return { ok: true, currentSeconds: Math.round(audio.currentTime) };
+  }
+  if (name === 'set_repeat') {
+    if (!['off', 'all', 'one'].includes(args.mode)) return { ok: false, error: '不支持的循环方式' };
+    state.repeat = args.mode;
+    applyPlaybackSettings();
+    return { ok: true, repeat: state.repeat };
+  }
+  if (name === 'set_shuffle') {
+    state.shuffle = Boolean(args.enabled);
+    applyPlaybackSettings();
+    return { ok: true, shuffle: state.shuffle };
+  }
+  if (name === 'get_queue') return { count: state.queue.length, tracks: state.queue.slice(0, 50).map(assistantTrack) };
+  if (name === 'add_to_queue') {
+    const track = findAssistantTracks(args.query, 1)[0];
+    if (!track) return { ok: false, error: '音乐库中没有找到匹配歌曲' };
+    const exists = state.queue.some((item) => trackPathKey(item.path) === trackPathKey(track.path));
+    if (!exists) state.queue.push(track);
+    renderQueue();
+    return { ok: true, added: !exists, track: assistantTrack(track) };
+  }
+  if (name === 'remove_from_queue') {
+    const normalizedQuery = String(args.query || '').trim().toLocaleLowerCase('zh-CN');
+    if (!normalizedQuery) return { ok: false, error: '请提供歌曲名或艺术家' };
+    const index = state.queue.findIndex((track) => [track.title, track.artist, track.album]
+      .some((value) => value.toLocaleLowerCase('zh-CN').includes(normalizedQuery)));
+    if (index < 0) return { ok: false, error: '播放队列中没有找到匹配歌曲' };
+    const [track] = state.queue.splice(index, 1);
+    renderQueue();
+    return { ok: true, track: assistantTrack(track), remaining: state.queue.length };
+  }
+  if (name === 'clear_queue') {
+    const removed = state.queue.length;
+    state.queue = [];
+    renderQueue();
+    return { ok: true, removed };
+  }
+  if (name === 'set_current_favorite') {
+    const track = currentTrack();
+    if (!track) return { ok: false, error: '当前没有播放歌曲' };
+    const enabled = Boolean(args.enabled);
+    if (enabled) state.favorites.add(track.id); else state.favorites.delete(track.id);
+    localStorage.setItem('favorites', JSON.stringify([...state.favorites]));
+    $('#playerFavoriteBtn').classList.toggle('active', enabled);
+    renderLibrary();
+    renderNowPlaying();
+    updateStats();
+    return { ok: true, favorite: enabled, track: assistantTrack(track) };
+  }
+  if (name === 'get_playlists') {
+    return { playlists: state.playlists.map((playlist) => ({ name: playlist.name, tracks: playlistTracks(playlist).length })) };
+  }
+  if (name === 'create_playlist') {
+    const playlistName = String(args.name || '').trim().slice(0, 30);
+    if (!playlistName) return { ok: false, error: '歌单名称不能为空' };
+    if (state.playlists.some((playlist) => playlist.name.toLocaleLowerCase('zh-CN') === playlistName.toLocaleLowerCase('zh-CN'))) {
+      return { ok: false, error: '已经存在同名歌单' };
+    }
+    state.playlists.push({
+      id: `playlist-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: playlistName,
+      trackPaths: [],
+      createdAt: Date.now()
+    });
+    persistPlaylists();
+    renderPlaylistNav();
+    updateStats();
+    return { ok: true, playlist: playlistName };
+  }
+  if (name === 'play_playlist') {
+    const query = String(args.name || '').trim().toLocaleLowerCase('zh-CN');
+    const playlist = state.playlists.find((item) => item.name.toLocaleLowerCase('zh-CN') === query)
+      || state.playlists.find((item) => item.name.toLocaleLowerCase('zh-CN').includes(query));
+    if (!playlist) return { ok: false, error: '没有找到该歌单' };
+    const tracks = playlistTracks(playlist);
+    if (!tracks.length) return { ok: false, error: '该歌单没有歌曲' };
+    state.queue = [...tracks];
+    renderQueue();
+    loadTrack(tracks[0]);
+    return { ok: true, playlist: playlist.name, tracks: tracks.length, playing: assistantTrack(tracks[0]) };
+  }
+  if (name === 'add_current_to_playlist') {
+    const track = currentTrack();
+    if (!track) return { ok: false, error: '当前没有播放歌曲' };
+    const query = String(args.name || '').trim().toLocaleLowerCase('zh-CN');
+    const playlist = state.playlists.find((item) => item.name.toLocaleLowerCase('zh-CN') === query)
+      || state.playlists.find((item) => item.name.toLocaleLowerCase('zh-CN').includes(query));
+    if (!playlist) return { ok: false, error: '没有找到该歌单' };
+    const exists = playlist.trackPaths.some((trackPath) => trackPathKey(trackPath) === trackPathKey(track.path));
+    if (!exists) {
+      playlist.trackPaths.push(track.path);
+      persistPlaylists();
+      renderPlaylistNav();
+    }
+    return { ok: true, added: !exists, playlist: playlist.name, track: assistantTrack(track) };
+  }
+  if (name === 'get_listening_statistics') {
+    return Object.fromEntries(['today', 'week', 'month', 'year'].map((period) => [period, aggregateListeningPeriod(period)]));
+  }
+  if (name === 'set_desktop_lyrics') {
+    state.desktopLyricsSettings.enabled = Boolean(args.enabled);
+    applyDesktopLyricsSettings({ notify: true });
+    return { ok: true, enabled: state.desktopLyricsSettings.enabled };
+  }
+  return { ok: false, error: `未知工具：${name}` };
+}
+
+function assistantConfigured() {
+  return Boolean(state.assistantConfig.model && state.assistantConfig.baseUrl);
+}
+
+function recentAssistantMessages(limit = 36) {
+  if (state.assistantMessages.length <= limit) return [...state.assistantMessages];
+  let start = state.assistantMessages.length - limit;
+  while (start > 0 && state.assistantMessages[start].role !== 'user') start -= 1;
+  return state.assistantMessages.slice(start);
+}
+
+function renderAssistantConfig() {
+  const config = state.assistantConfig;
+  $('#assistantModelInput').value = config.model || '';
+  $('#assistantBaseUrlInput').value = config.baseUrl || 'https://api.openai.com/v1';
+  $('#assistantApiKeyInput').value = '';
+  $('#assistantApiKeyInput').placeholder = config.hasApiKey ? '已保存，留空保持不变' : '输入 API Key（本地模型可留空）';
+  $('#assistantKeyStatus').textContent = config.hasApiKey
+    ? (config.apiKeyProtected ? 'API Key 已使用系统加密保存' : 'API Key 已保存在本机')
+    : '尚未保存 API Key（本地模型可不填）';
+  $('#clearAssistantKeyBtn').hidden = !config.hasApiKey;
+}
+
+function renderAssistant() {
+  const visibleMessages = state.assistantMessages.filter((message) => ['user', 'assistant'].includes(message.role) && message.content);
+  $('#assistantWelcome').hidden = visibleMessages.length > 0;
+  $('#assistantMessages').innerHTML = visibleMessages.map((message) => `
+    <article class="assistant-message ${message.role}">
+      <span>${message.role === 'assistant' ? 'Y' : '你'}</span>
+      <p>${escapeHtml(message.content)}</p>
+    </article>`).join('') + (state.assistantBusy ? '<article class="assistant-message assistant thinking"><span>Y</span><p><i></i><i></i><i></i></p></article>' : '');
+  $('#assistantConfigHint').hidden = assistantConfigured();
+  $('#assistantInput').disabled = state.assistantBusy || !assistantConfigured();
+  $('#assistantSendBtn').disabled = state.assistantBusy || !assistantConfigured();
+  requestAnimationFrame(() => { $('#assistantMessages').scrollTop = $('#assistantMessages').scrollHeight; });
+}
+
+async function loadAssistantConfig() {
+  try {
+    state.assistantConfig = { ...state.assistantConfig, ...await window.desktop.getAssistantConfig(), loaded: true };
+  } catch {
+    state.assistantConfig.loaded = true;
+  }
+  renderAssistantConfig();
+  renderAssistant();
+}
+
+async function saveAssistantConfiguration(clearApiKey = false) {
+  const button = $('#saveAssistantConfigBtn');
+  button.disabled = true;
+  try {
+    const saved = await window.desktop.saveAssistantConfig({
+      model: $('#assistantModelInput').value,
+      baseUrl: $('#assistantBaseUrlInput').value,
+      apiKey: clearApiKey ? '' : $('#assistantApiKeyInput').value,
+      clearApiKey
+    });
+    state.assistantConfig = { ...state.assistantConfig, ...saved, loaded: true };
+    renderAssistantConfig();
+    renderAssistant();
+    showToast(clearApiKey ? 'API Key 已清除' : 'Yuvis 配置已保存');
+  } catch (error) {
+    showToast(error.message || '无法保存 Yuvis 配置');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function sendAssistantMessage(prompt) {
+  const content = String(prompt || '').trim();
+  if (!content || state.assistantBusy) return;
+  if (!assistantConfigured()) return openSettings('yuvis');
+  state.assistantMessages.push({ role: 'user', content });
+  state.assistantBusy = true;
+  renderAssistant();
+  try {
+    for (let round = 0; round < 6; round += 1) {
+      const response = await window.desktop.completeAssistant({
+        messages: [{ role: 'system', content: ASSISTANT_SYSTEM_PROMPT }, ...recentAssistantMessages()],
+        tools: ASSISTANT_TOOLS
+      });
+      state.assistantMessages.push(response);
+      if (!response.tool_calls?.length) break;
+      for (const toolCall of response.tool_calls) {
+        let args = {};
+        try { args = JSON.parse(toolCall.function?.arguments || '{}'); } catch { args = {}; }
+        let result;
+        try {
+          result = await executeAssistantTool(toolCall.function?.name, args);
+        } catch (error) {
+          result = { ok: false, error: error.message || '工具执行失败' };
+        }
+        state.assistantMessages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result)
+        });
+      }
+      if (round === 5) state.assistantMessages.push({ role: 'assistant', content: '这次操作步骤较多，我已经执行了能够完成的部分。' });
+    }
+  } catch (error) {
+    state.assistantMessages.push({ role: 'assistant', content: error.message || 'Yuvis 助手暂时无法连接模型，请检查配置。' });
+  } finally {
+    if (state.assistantMessages.length > 60) {
+      let start = state.assistantMessages.length - 60;
+      while (start < state.assistantMessages.length && state.assistantMessages[start].role !== 'user') start += 1;
+      if (start < state.assistantMessages.length) state.assistantMessages.splice(0, start);
+    }
+    state.assistantBusy = false;
+    renderAssistant();
+  }
+}
+
 function renderView() {
   const playlist = activePlaylist();
   const names = state.view === 'playlist'
@@ -824,14 +1191,16 @@ function renderView() {
   $('#viewTitle').textContent = names[1];
   $('#sectionTitle').textContent = names[2];
   $('.main-header').hidden = false;
-  $('.header-actions').hidden = state.view === 'stats';
-  $('.library-section').hidden = state.view === 'stats';
+  $('.header-actions').hidden = ['stats', 'assistant'].includes(state.view);
+  $('.library-section').hidden = ['stats', 'assistant'].includes(state.view);
   $('#statsSection').hidden = state.view !== 'stats';
+  $('#assistantSection').hidden = state.view !== 'assistant';
   $('#deletePlaylistBtn').hidden = state.view !== 'playlist';
   updateNavigationState();
   renderPlaylistNav();
   renderLibrary();
   if (state.view === 'stats') renderStatistics();
+  if (state.view === 'assistant') renderAssistant();
   renderNowPlaying();
 }
 
@@ -1198,6 +1567,31 @@ $('#appearanceThemeOptions').addEventListener('click', (event) => {
   applyAppearanceSettings();
   showToast('主题主色已更新');
 });
+$('#saveAssistantConfigBtn').addEventListener('click', () => saveAssistantConfiguration(false));
+$('#clearAssistantKeyBtn').addEventListener('click', () => saveAssistantConfiguration(true));
+$('#openAssistantConfigBtn').addEventListener('click', () => openSettings('yuvis'));
+$('#assistantForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const input = $('#assistantInput');
+  const message = input.value;
+  input.value = '';
+  input.style.height = '';
+  sendAssistantMessage(message);
+});
+$('#assistantInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    $('#assistantForm').requestSubmit();
+  }
+});
+$('#assistantInput').addEventListener('input', (event) => {
+  event.target.style.height = 'auto';
+  event.target.style.height = `${Math.min(110, event.target.scrollHeight)}px`;
+});
+$('.assistant-suggestions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-assistant-prompt]');
+  if (button) sendAssistantMessage(button.dataset.assistantPrompt);
+});
 $('#desktopLyricsEnabledInput').addEventListener('change', (event) => {
   state.desktopLyricsSettings.enabled = event.target.checked;
   applyDesktopLyricsSettings({ notify: true });
@@ -1485,6 +1879,7 @@ async function init() {
   applyAppearanceSettings({ persist: false });
   applyPlaybackSettings();
   applyDesktopLyricsSettings();
+  await loadAssistantConfig();
   renderView();
   renderQueue();
   updateStats();
