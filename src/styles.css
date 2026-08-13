@@ -31,8 +31,8 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .titlebar { background: linear-gradient(90deg, #e7e6e3 0%, #ecebe8 48%, #f0efec 100%); display: flex; align-items: center; padding: 5px 12px 3px 14px; }
 .drag-region { -webkit-app-region: drag; flex: 1; align-self: stretch; display: flex; align-items: center; }
 .titlebar-tools { margin-left: 14px; display: flex; align-items: center; gap: 2px; -webkit-app-region: no-drag; }
-.titlebar-tool-button { height: 28px; padding: 0 9px; display: flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; color: #706d72; background: transparent; font-size: 10px; white-space: nowrap; transition: .17s; }
-.titlebar-tool-button svg { width: 15px; stroke-width: 1.6; }
+.titlebar-tool-button { height: 30px; padding: 0 10px; display: flex; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 8px; color: #625f64; background: transparent; font-size: 12px; font-weight: 600; white-space: nowrap; transition: .17s; }
+.titlebar-tool-button svg { width: 16px; stroke-width: 1.7; }
 .titlebar-tool-button:hover { color: var(--ink); background: rgba(255,255,255,.68); box-shadow: 0 4px 12px rgba(30,25,25,.05); }
 .equalizer-title-button.active { color: var(--red); border-color: transparent; background: transparent; }
 .equalizer-title-button.active:hover { border-color: rgba(var(--accent-rgb),.16); background: var(--red-soft); }
