@@ -26,6 +26,8 @@ const state = {
   currentLyrics: null,
   activeLyricIndex: -1,
   lyricAnimationFrame: null,
+  lyricsDragging: false,
+  lyricManualScrollUntil: 0,
   volume: Number.isFinite(savedVolume) ? Math.max(0, Math.min(1, savedVolume)) : .8,
   muted: Boolean(savedAppSettings.muted),
   desktopLyricsSettings: {
@@ -337,7 +339,7 @@ function renderLyrics(track) {
     return;
   }
   container.innerHTML = parsed.lines.map((line, index) => `
-    <p class="${parsed.synced && index > 4 ? 'lyric-preview-hidden' : ''}" data-lyric-index="${index}"${Number.isFinite(line.time) ? ` data-lyric-time="${line.time}"` : ''}>${escapeHtml(line.text)}${line.translation ? `<span class="lyric-translation">${escapeHtml(line.translation)}</span>` : ''}</p>
+    <p data-lyric-index="${index}"${Number.isFinite(line.time) ? ` data-lyric-time="${line.time}"` : ''}>${escapeHtml(line.text)}${line.translation ? `<span class="lyric-translation">${escapeHtml(line.translation)}</span>` : ''}</p>
   `).join('');
   container.scrollTop = 0;
   updateDesktopLyrics(-1);
@@ -366,16 +368,16 @@ function updateLyricPosition(seconds, forceCenter = false) {
   container.querySelectorAll('[data-lyric-index]').forEach((line, index) => {
     line.classList.toggle('active', index === activeIndex);
     line.classList.toggle('past', index < activeIndex);
-    line.classList.toggle('lyric-preview-hidden', index < activeIndex - 2 || index > activeIndex + 4);
     if (index === activeIndex) line.setAttribute('aria-current', 'true');
     else line.removeAttribute('aria-current');
   });
+  if (state.lyricsDragging || (!forceCenter && Date.now() < state.lyricManualScrollUntil)) return;
   const activeLine = container.querySelector(`[data-lyric-index="${activeIndex}"]`);
   if (activeLine) {
     const containerRect = container.getBoundingClientRect();
     const lineRect = activeLine.getBoundingClientRect();
     const lineCenterInContent = lineRect.top - containerRect.top + container.scrollTop + lineRect.height / 2;
-    const targetTop = lineCenterInContent - container.clientHeight / 2;
+    const targetTop = lineCenterInContent - container.clientHeight * .36;
     container.scrollTop = Math.max(0, targetTop);
   }
 }
@@ -971,10 +973,42 @@ $('#lyricsOffsetControl').addEventListener('click', (event) => {
   if (stepButton) return adjustLyricsOffset(Number(stepButton.dataset.lyricsOffsetStep));
   if (event.target.closest('[data-lyrics-offset-reset]')) adjustLyricsOffset(0, true);
 });
-$('#detailLyrics').addEventListener('click', (event) => {
+const lyricDrag = { pointerId: null, startY: 0, startScrollTop: 0, moved: false };
+$('#detailLyrics').addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  const container = event.currentTarget;
+  lyricDrag.pointerId = event.pointerId;
+  lyricDrag.startY = event.clientY;
+  lyricDrag.startScrollTop = container.scrollTop;
+  lyricDrag.moved = false;
+  state.lyricsDragging = true;
+  container.classList.add('dragging');
+  container.setPointerCapture(event.pointerId);
+});
+$('#detailLyrics').addEventListener('pointermove', (event) => {
+  if (lyricDrag.pointerId !== event.pointerId) return;
+  const distance = event.clientY - lyricDrag.startY;
+  if (Math.abs(distance) > 4) lyricDrag.moved = true;
+  event.currentTarget.scrollTop = lyricDrag.startScrollTop - distance;
+});
+function finishLyricDrag(event) {
+  if (lyricDrag.pointerId !== event.pointerId) return;
+  const container = event.currentTarget;
+  if (container.hasPointerCapture(event.pointerId)) container.releasePointerCapture(event.pointerId);
+  lyricDrag.pointerId = null;
+  state.lyricsDragging = false;
+  state.lyricManualScrollUntil = Date.now() + 4000;
+  container.classList.remove('dragging');
+}
+$('#detailLyrics').addEventListener('pointerup', finishLyricDrag);
+$('#detailLyrics').addEventListener('pointercancel', finishLyricDrag);
+$('#detailLyrics').addEventListener('dblclick', (event) => {
   const line = event.target.closest('[data-lyric-time]');
-  if (!line || !Number.isFinite(audio.duration)) return;
+  if (!line || lyricDrag.moved || !Number.isFinite(audio.duration)) return;
   audio.currentTime = Math.max(0, Number(line.dataset.lyricTime) + currentLyricOffset());
+  state.lyricManualScrollUntil = 0;
+  updateLyricPosition(audio.currentTime, true);
+  audio.play().catch(() => showToast('无法从这句歌词开始播放'));
 });
 $('#openNowPlaying').addEventListener('click', openNowPlayingPage);
 $('#closeNowPlayingBtn').addEventListener('click', closeNowPlayingPage);
