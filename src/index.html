@@ -413,32 +413,50 @@
           <button class="yuvis-config-save" id="saveAssistantConfigBtn" type="button">保存 Yuvis 配置</button>
           <div class="settings-save-note"><i></i><span>API Key 只由主进程读取；Windows 支持时会使用系统加密保护，不会回显到页面。</span></div>
         </div>
-        <div class="settings-panel ai-docs-panel" data-settings-panel="aiDocs" hidden>
-          <div class="ai-docs-hero">
-            <span class="ai-docs-mark">AI</span>
-            <div><strong>Yuvis 软件工具协议</strong><p>模型通过 OpenAI Chat Completions 的 tools / tool_calls 机制操作当前播放器。</p></div>
-            <em id="aiToolCount">25 个接口</em>
-          </div>
-          <div class="ai-docs-flow" aria-label="AI 对接流程">
-            <span><b>1</b>用户发出指令</span><i>→</i><span><b>2</b>模型选择工具</span><i>→</i><span><b>3</b>软件执行并回传</span>
-          </div>
-          <section class="ai-docs-scope">
-            <h4>AI 可以操作的功能</h4>
-            <div class="ai-capability-grid" id="aiCapabilityGrid"></div>
-          </section>
-          <section class="ai-docs-reference">
-            <div class="ai-docs-section-title"><div><h4>接口参考</h4><p>必填参数标有 *；点击接口可查看参数约束。</p></div><span>实时同步当前版本</span></div>
-            <div class="ai-tool-list" id="aiToolList"></div>
-          </section>
-          <div class="ai-docs-note"><strong>安全边界</strong><span>这些接口只读写当前 Yuvis 音乐播放器的本地状态，不提供任意文件、命令或系统控制能力。</span></div>
-        </div>
-        <div class="settings-panel shortcuts-panel" data-settings-panel="shortcuts" hidden>
-          <div class="shortcut-row"><span>播放 / 暂停</span><kbd>Space</kbd></div>
-          <div class="shortcut-row"><span>聚焦搜索</span><kbd>Ctrl</kbd><b>+</b><kbd>K</kbd></div>
-          <div class="reserved-inline"><i></i>自定义快捷键入口已预留</div>
-        </div>
       </section>
     </div>
+  </div>
+
+  <div class="modal-backdrop" id="aiDocsModal" hidden>
+    <article class="feature-card ai-docs-card" aria-labelledby="aiDocsModalTitle">
+      <header class="feature-card-header">
+        <div class="feature-card-heading"><span class="feature-card-mark ai">AI</span><div><small>YUVIS INTEGRATION</small><h3 id="aiDocsModalTitle">AI 对接文档</h3><p>查看模型可以操作的软件功能与工具接口。</p></div></div>
+        <button class="modal-close" data-close-modal aria-label="关闭 AI 对接文档"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="feature-card-scroll ai-docs-panel">
+        <div class="ai-docs-hero">
+          <span class="ai-docs-mark">AI</span>
+          <div><strong>Yuvis 软件工具协议</strong><p>模型通过 OpenAI Chat Completions 的 tools / tool_calls 机制操作当前播放器。</p></div>
+          <em id="aiToolCount">25 个接口</em>
+        </div>
+        <div class="ai-docs-flow" aria-label="AI 对接流程">
+          <span><b>1</b>用户发出指令</span><i>→</i><span><b>2</b>模型选择工具</span><i>→</i><span><b>3</b>软件执行并回传</span>
+        </div>
+        <section class="ai-docs-scope">
+          <h4>AI 可以操作的功能</h4>
+          <div class="ai-capability-grid" id="aiCapabilityGrid"></div>
+        </section>
+        <section class="ai-docs-reference">
+          <div class="ai-docs-section-title"><div><h4>接口参考</h4><p>必填参数标有 *；点击接口可查看参数约束。</p></div><span>实时同步当前版本</span></div>
+          <div class="ai-tool-list" id="aiToolList"></div>
+        </section>
+        <div class="ai-docs-note"><strong>安全边界</strong><span>这些接口只读写当前 Yuvis 音乐播放器的本地状态，不提供任意文件、命令或系统控制能力。</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="modal-backdrop" id="shortcutsModal" hidden>
+    <article class="feature-card shortcuts-card" aria-labelledby="shortcutsModalTitle">
+      <header class="feature-card-header">
+        <div class="feature-card-heading"><span class="feature-card-mark"><svg viewBox="0 0 24 24"><path d="M5 7h14v10H5zM8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><div><small>KEYBOARD CONTROL</small><h3 id="shortcutsModalTitle">快捷键</h3><p>无需离开当前界面即可快速控制播放与搜索。</p></div></div>
+        <button class="modal-close" data-close-modal aria-label="关闭快捷键页面"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="feature-card-scroll shortcuts-panel">
+        <div class="shortcut-row"><span><strong>播放 / 暂停</strong><small>切换当前音乐的播放状态</small></span><kbd>Space</kbd></div>
+        <div class="shortcut-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><kbd>Ctrl</kbd><b>+</b><kbd>K</kbd></div>
+        <div class="reserved-inline"><i></i>自定义快捷键入口已预留</div>
+      </div>
+    </article>
   </div>
 
   <div class="toast" id="toast"></div>

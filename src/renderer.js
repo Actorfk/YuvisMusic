@@ -552,6 +552,7 @@ function applyEqualizerSettings({ persist = true, render = true } = {}) {
 }
 
 function openEqualizer() {
+  closeModals();
   ensureEqualizerAudioGraph();
   resumeEqualizerAudio();
   renderEqualizer();
@@ -772,9 +773,7 @@ function showSettingsSection(section) {
     playback: ['播放设置', '控制音量与默认播放行为'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
-    yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型'],
-    aiDocs: ['AI 对接文档', '查看模型可以操作的软件功能与工具接口'],
-    shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口']
+    yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
   };
   state.settingsSection = names[section] ? section : 'playback';
   $('#settingsTitle').textContent = names[state.settingsSection][0];
@@ -788,11 +787,11 @@ function showSettingsSection(section) {
 }
 
 function openSettings(section = 'playback') {
+  closeModals();
   renderPlaybackSettings();
   renderDesktopLyricsSettings();
   renderAppearanceSettings();
   renderAssistantConfig();
-  renderAIDocumentation();
   showSettingsSection(section);
   openModal($('#settingsModal'));
 }
@@ -1900,8 +1899,15 @@ $('#fontSizeOptions').addEventListener('click', (event) => {
   showToast(`字体大小已切换为「${button.querySelector('span').textContent}」`);
 });
 $('#equalizerBtn').addEventListener('click', openEqualizer);
-$('#aiDocsTitleBtn').addEventListener('click', () => openSettings('aiDocs'));
-$('#shortcutsTitleBtn').addEventListener('click', () => openSettings('shortcuts'));
+$('#aiDocsTitleBtn').addEventListener('click', () => {
+  closeModals();
+  renderAIDocumentation();
+  openModal($('#aiDocsModal'));
+});
+$('#shortcutsTitleBtn').addEventListener('click', () => {
+  closeModals();
+  openModal($('#shortcutsModal'));
+});
 $('#aboutTitleBtn').addEventListener('click', () => {
   closeModals();
   openModal($('#aboutModal'));
