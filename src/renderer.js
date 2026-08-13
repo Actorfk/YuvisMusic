@@ -2122,11 +2122,21 @@ $('#playlistForm').addEventListener('submit', (event) => {
 });
 $('#deletePlaylistBtn').addEventListener('click', () => {
   const playlist = activePlaylist();
-  if (!playlist || !window.confirm(`确定删除歌单「${playlist.name}」吗？\n音乐文件不会被删除。`)) return;
+  if (!playlist) return;
+  $('#deletePlaylistName').textContent = playlist.name;
+  $('#deletePlaylistModal').dataset.playlistId = playlist.id;
+  openModal($('#deletePlaylistModal'));
+  setTimeout(() => $('#confirmDeletePlaylistBtn').focus(), 30);
+});
+$('#confirmDeletePlaylistBtn').addEventListener('click', () => {
+  const playlistId = $('#deletePlaylistModal').dataset.playlistId;
+  const playlist = state.playlists.find((item) => item.id === playlistId);
+  if (!playlist) return closeModals();
   state.playlists = state.playlists.filter((item) => item.id !== playlist.id);
   persistPlaylists();
   state.activePlaylistId = null;
   state.view = 'library';
+  closeModals();
   renderView();
   showToast('歌单已删除');
 });
