@@ -13,9 +13,21 @@
       <div class="drag-region">
         <div class="brand-mini"><span class="brand-dot"></span><span>Yuvis音乐</span></div>
         <div class="titlebar-tools">
-          <button id="equalizerBtn" class="equalizer-title-button" aria-label="打开声音均衡器" title="声音均衡器">
+          <button id="equalizerBtn" class="titlebar-tool-button equalizer-title-button" aria-label="打开声音均衡器" title="声音均衡器">
             <svg viewBox="0 0 24 24"><path d="M4 7h5M15 7h5M9 4v6M4 17h3M13 17h7M7 14v6M4 12h9M19 12h1M13 9v6M15 7h.01"/></svg>
             <span>均衡器</span>
+          </button>
+          <button id="aiDocsTitleBtn" class="titlebar-tool-button" aria-label="打开 AI 对接文档" title="AI 对接文档">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h7M9 16h7"/></svg>
+            <span>AI 对接文档</span>
+          </button>
+          <button id="shortcutsTitleBtn" class="titlebar-tool-button" aria-label="查看快捷键" title="快捷键">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h7"/></svg>
+            <span>快捷键</span>
+          </button>
+          <button id="aboutTitleBtn" class="titlebar-tool-button" aria-label="关于 Yuvis 音乐" title="关于">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <span>关于</span>
           </button>
         </div>
       </div>
@@ -271,9 +283,6 @@
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
           <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
           <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
-          <button data-settings-section="aiDocs"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h7M9 16h7"/></svg><span>AI 对接文档</span><em>25</em></button>
-          <button data-settings-section="shortcuts"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h7"/></svg><span>快捷键</span></button>
-          <button data-settings-section="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>关于</span></button>
         </nav>
       </aside>
       <section class="settings-content">

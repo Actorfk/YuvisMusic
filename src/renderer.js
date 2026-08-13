@@ -1851,6 +1851,9 @@ $('#appearanceThemeOptions').addEventListener('click', (event) => {
   showToast('主题主色已更新');
 });
 $('#equalizerBtn').addEventListener('click', openEqualizer);
+$('#aiDocsTitleBtn').addEventListener('click', () => openSettings('aiDocs'));
+$('#shortcutsTitleBtn').addEventListener('click', () => openSettings('shortcuts'));
+$('#aboutTitleBtn').addEventListener('click', () => openSettings('about'));
 $('#equalizerEnabledInput').addEventListener('change', (event) => {
   state.equalizerSettings.enabled = event.target.checked;
   applyEqualizerSettings({ render: false });
