@@ -149,6 +149,7 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .lyrics-offset-control.disabled { opacity: .45; pointer-events: none; }
 .detail-lyrics { height: clamp(310px, 37vh, 390px); max-width: 500px; margin: 10px 0 0; overflow-y: auto; padding: clamp(118px, 15vh, 154px) 20px; border-left: 2px solid #dedbd7; scrollbar-width: none; mask-image: linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent); }
 .detail-lyrics p { color: #9b989d; font-size: 17px; line-height: 1.55; margin: 0; padding: 8px 0; cursor: default; transition: transform .18s, opacity .18s; transform-origin: left center; }
+.detail-lyrics p.lyric-preview-hidden { display: none; }
 .detail-lyrics.synced p { cursor: pointer; }
 .detail-lyrics.synced p:hover { color: #777; }
 .detail-lyrics p.past { color: #c8c5c6; opacity: .72; }

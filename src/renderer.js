@@ -337,7 +337,7 @@ function renderLyrics(track) {
     return;
   }
   container.innerHTML = parsed.lines.map((line, index) => `
-    <p data-lyric-index="${index}"${Number.isFinite(line.time) ? ` data-lyric-time="${line.time}"` : ''}>${escapeHtml(line.text)}${line.translation ? `<span class="lyric-translation">${escapeHtml(line.translation)}</span>` : ''}</p>
+    <p class="${parsed.synced && index > 4 ? 'lyric-preview-hidden' : ''}" data-lyric-index="${index}"${Number.isFinite(line.time) ? ` data-lyric-time="${line.time}"` : ''}>${escapeHtml(line.text)}${line.translation ? `<span class="lyric-translation">${escapeHtml(line.translation)}</span>` : ''}</p>
   `).join('');
   container.scrollTop = 0;
   updateDesktopLyrics(-1);
@@ -366,6 +366,7 @@ function updateLyricPosition(seconds, forceCenter = false) {
   container.querySelectorAll('[data-lyric-index]').forEach((line, index) => {
     line.classList.toggle('active', index === activeIndex);
     line.classList.toggle('past', index < activeIndex);
+    line.classList.toggle('lyric-preview-hidden', index < activeIndex - 2 || index > activeIndex + 4);
     if (index === activeIndex) line.setAttribute('aria-current', 'true');
     else line.removeAttribute('aria-current');
   });
@@ -1030,7 +1031,7 @@ document.addEventListener('pointerdown', (event) => {
     closeQueueMenu();
   }
   const actionable = event.target.closest('button, input, select, textarea, label, a, [role="button"], [data-track-id], [data-queue-id], [data-playlist-id]');
-  if (state.playerOpen && actionable && !actionable.closest('.now-playing-sheet')) {
+  if (state.playerOpen && actionable && !actionable.closest('.now-playing-sheet') && !actionable.closest('.player-bar')) {
     closeNowPlayingPage();
   }
 });
