@@ -65,6 +65,38 @@ function assistantChatEndpoint(baseUrl) {
   return url.toString();
 }
 
+function normalizedAssistantToolCalls(toolCalls) {
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls.filter((toolCall) => toolCall && typeof toolCall === 'object' && toolCall.function?.name).map((toolCall, index) => {
+    const argumentsValue = toolCall.function.arguments;
+    return {
+      id: String(toolCall.id || `yuvis-tool-${Date.now()}-${index}`),
+      type: 'function',
+      function: {
+        name: String(toolCall.function.name),
+        arguments: typeof argumentsValue === 'string' ? argumentsValue : JSON.stringify(argumentsValue || {})
+      }
+    };
+  });
+}
+
+function normalizedAssistantMessages(input) {
+  if (!Array.isArray(input)) return [];
+  return input.slice(-40).map((message) => {
+    if (!message || !['system', 'user', 'assistant', 'tool'].includes(message.role)) return null;
+    const normalized = { role: message.role, content: typeof message.content === 'string' ? message.content : '' };
+    if (message.role === 'assistant') {
+      const toolCalls = normalizedAssistantToolCalls(message.tool_calls);
+      if (toolCalls.length) normalized.tool_calls = toolCalls;
+    }
+    if (message.role === 'tool') {
+      if (typeof message.tool_call_id !== 'string' || !message.tool_call_id) return null;
+      normalized.tool_call_id = message.tool_call_id;
+    }
+    return normalized;
+  }).filter(Boolean);
+}
+
 async function pathExists(targetPath) {
   try {
     await fs.access(targetPath);
@@ -404,7 +436,7 @@ ipcMain.handle('assistant:complete', async (_event, payload) => {
   const model = String(config.model || '').trim();
   const baseUrl = String(config.baseUrl || '').trim();
   if (!model || !baseUrl) throw new Error('请先在设置中完成 Yuvis 配置');
-  const messages = Array.isArray(payload?.messages) ? payload.messages.slice(-40) : [];
+  const messages = normalizedAssistantMessages(payload?.messages);
   const tools = Array.isArray(payload?.tools) ? payload.tools.slice(0, 30) : [];
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
@@ -412,10 +444,15 @@ ipcMain.handle('assistant:complete', async (_event, payload) => {
     const apiKey = assistantApiKey(config);
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const requestBody = { model, messages, temperature: 0.4 };
+    if (tools.length) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = 'auto';
+    }
     const response = await fetch(assistantChatEndpoint(baseUrl), {
       method: 'POST',
       headers,
-      body: JSON.stringify({ model, messages, tools, tool_choice: 'auto', temperature: 0.4 }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal
     });
     const responseText = await response.text();
@@ -427,11 +464,13 @@ ipcMain.handle('assistant:complete', async (_event, payload) => {
     }
     const message = data?.choices?.[0]?.message;
     if (!message || typeof message !== 'object') throw new Error('模型没有返回有效回复');
-    return {
+    const result = {
       role: 'assistant',
-      content: typeof message.content === 'string' ? message.content : '',
-      tool_calls: Array.isArray(message.tool_calls) ? message.tool_calls : []
+      content: typeof message.content === 'string' ? message.content : ''
     };
+    const toolCalls = normalizedAssistantToolCalls(message.tool_calls);
+    if (toolCalls.length) result.tool_calls = toolCalls;
+    return result;
   } catch (error) {
     if (error.name === 'AbortError') throw new Error('模型请求超时，请检查模型地址或网络');
     throw error;

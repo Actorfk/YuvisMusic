@@ -1427,7 +1427,19 @@ function renderAssistant() {
   $('#assistantConfigHint').hidden = assistantConfigured();
   $('#assistantInput').disabled = state.assistantBusy || !assistantConfigured();
   $('#assistantSendBtn').disabled = state.assistantBusy || !assistantConfigured();
+  $('#newAssistantChatBtn').disabled = state.assistantBusy || state.assistantMessages.length === 0;
   requestAnimationFrame(() => { $('#assistantMessages').scrollTop = $('#assistantMessages').scrollHeight; });
+}
+
+function startNewAssistantChat() {
+  if (state.assistantBusy || state.assistantMessages.length === 0) return;
+  state.assistantMessages = [];
+  const input = $('#assistantInput');
+  input.value = '';
+  input.style.height = '';
+  renderAssistant();
+  if (assistantConfigured()) input.focus();
+  showToast('已创建新对话');
 }
 
 async function loadAssistantConfig() {
@@ -1951,6 +1963,7 @@ $('#equalizerPresetNameInput').addEventListener('keydown', (event) => {
 $('#saveAssistantConfigBtn').addEventListener('click', () => saveAssistantConfiguration(false));
 $('#clearAssistantKeyBtn').addEventListener('click', () => saveAssistantConfiguration(true));
 $('#openAssistantConfigBtn').addEventListener('click', () => openSettings('yuvis'));
+$('#newAssistantChatBtn').addEventListener('click', startNewAssistantChat);
 $('#assistantForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const input = $('#assistantInput');

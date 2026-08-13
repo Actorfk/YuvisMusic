@@ -273,6 +273,13 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 
 .assistant-section { height: calc(100% - 78px); min-height: 430px; margin-top: 22px; padding: 22px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(35,30,30,.06); border-radius: 20px; background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(242,241,238,.72)); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 14px 38px rgba(25,20,20,.045); }
 .assistant-section[hidden], .assistant-welcome[hidden], .assistant-config-hint[hidden] { display: none; }
+.assistant-toolbar { flex: none; min-height: 34px; margin: -5px -2px 6px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.assistant-toolbar > span { display: flex; align-items: center; gap: 7px; color: #969498; font-size: 8px; font-weight: 750; letter-spacing: .14em; }
+.assistant-toolbar > span i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.08); }
+.assistant-toolbar button { height: 31px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; color: #767478; background: rgba(255,255,255,.7); font-size: 10px; font-weight: 650; transition: .17s; }
+.assistant-toolbar button:hover { color: var(--red); border-color: rgba(var(--accent-rgb),.24); background: var(--red-soft); }
+.assistant-toolbar button:disabled { cursor: default; opacity: .38; }
+.assistant-toolbar button svg { width: 14px; }
 .assistant-welcome { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .assistant-mark { width: 62px; height: 62px; display: grid; place-items: center; border-radius: 20px; color: #fff; background: linear-gradient(145deg, var(--ink), #333137); box-shadow: 0 14px 30px rgba(25,20,20,.2), inset 0 0 0 1px rgba(255,255,255,.08); transform: rotate(-4deg); }
 .assistant-mark span { color: var(--red-bright); font-size: 27px; font-weight: 850; transform: rotate(4deg); }
