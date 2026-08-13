@@ -1083,14 +1083,45 @@ $('#lyricsOffsetControl').addEventListener('click', (event) => {
   if (stepButton) return adjustLyricsOffset(Number(stepButton.dataset.lyricsOffsetStep));
   if (event.target.closest('[data-lyrics-offset-reset]')) adjustLyricsOffset(0, true);
 });
-const lyricDrag = { pointerId: null, startY: 0, startScrollTop: 0, moved: false };
+const lyricDrag = {
+  pointerId: null,
+  startY: 0,
+  startScrollTop: 0,
+  startLine: null,
+  moved: false,
+  lastClickAt: 0,
+  lastLineIndex: null
+};
+
+function playFromLyricLine(line) {
+  if (!line || !state.currentId) return;
+  const requestedTime = Math.max(0, Number(line.dataset.lyricTime) + currentLyricOffset());
+  if (!Number.isFinite(requestedTime)) return;
+  const seekAndPlay = () => {
+    const targetTime = Number.isFinite(audio.duration) ? Math.min(requestedTime, Math.max(0, audio.duration - .01)) : requestedTime;
+    try {
+      audio.currentTime = targetTime;
+      state.lyricManualScrollUntil = 0;
+      updatePlaybackProgress();
+      updateLyricPosition(targetTime, true);
+      audio.play()
+        .then(() => showToast(`已从 ${formatTime(targetTime)} 开始播放`))
+        .catch(() => showToast('无法从这句歌词开始播放'));
+    } catch {
+      showToast('歌词跳转失败，请稍后重试');
+    }
+  };
+  if (audio.readyState === 0) audio.addEventListener('loadedmetadata', seekAndPlay, { once: true });
+  else seekAndPlay();
+}
+
 $('#detailLyrics').addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
-  if (event.detail > 1) return;
   const container = event.currentTarget;
   lyricDrag.pointerId = event.pointerId;
   lyricDrag.startY = event.clientY;
   lyricDrag.startScrollTop = container.scrollTop;
+  lyricDrag.startLine = event.target.closest('[data-lyric-time]');
   lyricDrag.moved = false;
   state.lyricsDragging = true;
   container.classList.add('dragging');
@@ -1102,39 +1133,37 @@ $('#detailLyrics').addEventListener('pointermove', (event) => {
   if (Math.abs(distance) > 4) lyricDrag.moved = true;
   event.currentTarget.scrollTop = lyricDrag.startScrollTop - distance;
 });
-function finishLyricDrag(event) {
+function finishLyricDrag(event, allowDoubleClick = false) {
   if (lyricDrag.pointerId !== event.pointerId) return;
   const container = event.currentTarget;
+  const clickedLine = lyricDrag.startLine;
+  const wasMoved = lyricDrag.moved;
   if (container.hasPointerCapture(event.pointerId)) container.releasePointerCapture(event.pointerId);
   lyricDrag.pointerId = null;
+  lyricDrag.startLine = null;
   state.lyricsDragging = false;
   state.lyricManualScrollUntil = Date.now() + 4000;
   container.classList.remove('dragging');
-}
-$('#detailLyrics').addEventListener('pointerup', finishLyricDrag);
-$('#detailLyrics').addEventListener('pointercancel', finishLyricDrag);
-$('#detailLyrics').addEventListener('dblclick', (event) => {
-  const line = event.target.closest('[data-lyric-time]');
-  if (!line || lyricDrag.moved || !state.currentId) return;
-  event.preventDefault();
-  const requestedTime = Math.max(0, Number(line.dataset.lyricTime) + currentLyricOffset());
-  if (!Number.isFinite(requestedTime)) return;
-  const seekAndPlay = () => {
-    const targetTime = Number.isFinite(audio.duration) ? Math.min(requestedTime, Math.max(0, audio.duration - .01)) : requestedTime;
-    try {
-      if (typeof audio.fastSeek === 'function') audio.fastSeek(targetTime);
-      else audio.currentTime = targetTime;
-      state.lyricManualScrollUntil = 0;
-      updatePlaybackProgress();
-      updateLyricPosition(targetTime, true);
-      audio.play().catch(() => showToast('无法从这句歌词开始播放'));
-    } catch {
-      showToast('歌词跳转失败，请稍后重试');
+  if (!allowDoubleClick || wasMoved || !clickedLine) {
+    if (wasMoved) {
+      lyricDrag.lastClickAt = 0;
+      lyricDrag.lastLineIndex = null;
     }
-  };
-  if (audio.readyState === 0) audio.addEventListener('loadedmetadata', seekAndPlay, { once: true });
-  else seekAndPlay();
-});
+    return;
+  }
+  const now = Date.now();
+  const lineIndex = clickedLine.dataset.lyricIndex;
+  if (lyricDrag.lastLineIndex === lineIndex && now - lyricDrag.lastClickAt <= 500) {
+    lyricDrag.lastClickAt = 0;
+    lyricDrag.lastLineIndex = null;
+    playFromLyricLine(clickedLine);
+  } else {
+    lyricDrag.lastClickAt = now;
+    lyricDrag.lastLineIndex = lineIndex;
+  }
+}
+$('#detailLyrics').addEventListener('pointerup', (event) => finishLyricDrag(event, true));
+$('#detailLyrics').addEventListener('pointercancel', (event) => finishLyricDrag(event, false));
 $('#openNowPlaying').addEventListener('click', openNowPlayingPage);
 $('#closeNowPlayingBtn').addEventListener('click', closeNowPlayingPage);
 $('#playAllBtn').addEventListener('click', () => {
