@@ -668,8 +668,11 @@ function applyFontSizeSetting() {
     }
   }
   const factor = FONT_SIZE_OPTIONS[state.appearanceSettings.fontSize] || 1;
+  document.documentElement.classList.add('font-size-changing');
+  void document.documentElement.offsetWidth;
   for (const [style, originalFontSize] of scalableFontRules) style.fontSize = scaledFontSize(originalFontSize, factor);
   document.documentElement.dataset.fontSize = state.appearanceSettings.fontSize;
+  requestAnimationFrame(() => document.documentElement.classList.remove('font-size-changing'));
 }
 
 function applyAppearanceSettings({ persist = true } = {}) {

@@ -21,6 +21,7 @@
 }
 
 * { box-sizing: border-box; }
+.font-size-changing *, .font-size-changing *::before, .font-size-changing *::after { transition: none !important; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
 body { font-family: "DM Sans", "Noto Sans SC", "Microsoft YaHei", sans-serif; color: var(--ink); background: var(--canvas); font-size: 15px; user-select: none; }
 button, input { font: inherit; }
