@@ -81,6 +81,16 @@ function formatDuration(seconds) {
   return minutes ? `${hours} 小时 ${minutes} 分` : `${hours} 小时`;
 }
 
+function formatListeningDuration(seconds) {
+  const totalSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  if (minutes < 60) return minutes ? `${minutes} 分 ${remainingSeconds} 秒` : `${remainingSeconds} 秒`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours} 小时 ${remainingMinutes} 分` : `${hours} 小时`;
+}
+
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -110,13 +120,13 @@ function aggregateListeningPeriod(period) {
     result.seconds += Number(day.seconds) || 0;
     result.plays += Number(day.plays) || 0;
     Object.entries(day.tracks || {}).forEach(([trackKey, track]) => {
-      if ((Number(track.seconds) || 0) >= 60 || (Number(track.plays) || 0) > 0) result.tracks.add(trackKey);
+      if (track.valid || (Number(track.seconds) || 0) >= 60 || (Number(track.plays) || 0) > 0) result.tracks.add(trackKey);
     });
   });
   return { seconds: result.seconds, plays: result.plays, trackCount: result.tracks.size };
 }
 
-function totalValidListeningSeconds() {
+function totalListeningSeconds() {
   return Object.values(state.listeningStats?.days || {}).reduce((sum, day) => sum + (Number(day.seconds) || 0), 0);
 }
 
@@ -130,28 +140,53 @@ function beginListeningSession(track) {
   } : null;
 }
 
-function recordValidListening(seconds, countPlay = false) {
+function currentListeningDay() {
   const session = state.listeningSession;
-  if (!session || seconds <= 0) return;
+  if (!session) return null;
   if (!state.listeningStats || typeof state.listeningStats !== 'object') state.listeningStats = { days: {} };
   if (!state.listeningStats.days || typeof state.listeningStats.days !== 'object') state.listeningStats.days = {};
   const dateKey = localDateKey();
   const day = state.listeningStats.days[dateKey] || { seconds: 0, plays: 0, tracks: {} };
-  const track = day.tracks[session.trackKey] || { title: session.title, seconds: 0, plays: 0 };
-  day.seconds += seconds;
-  track.seconds += seconds;
-  track.title = session.title;
-  if (countPlay) {
-    day.plays += 1;
-    track.plays += 1;
-  }
-  day.tracks[session.trackKey] = track;
+  if (!day.tracks || typeof day.tracks !== 'object') day.tracks = {};
   state.listeningStats.days[dateKey] = day;
+  return day;
+}
+
+function persistListeningStats(force = false) {
   state.listeningPersistTicks += 1;
-  if (countPlay || state.listeningPersistTicks >= 5) {
+  if (force || state.listeningPersistTicks >= 5) {
     localStorage.setItem('listeningStats', JSON.stringify(state.listeningStats));
     state.listeningPersistTicks = 0;
   }
+}
+
+function recordListeningSecond() {
+  const session = state.listeningSession;
+  const day = currentListeningDay();
+  if (!session || !day) return;
+  day.seconds += 1;
+  if (session.valid) {
+    const track = day.tracks[session.trackKey] || { title: session.title, seconds: 0, plays: 0, valid: true };
+    track.title = session.title;
+    track.valid = true;
+    track.seconds += 1;
+    day.tracks[session.trackKey] = track;
+  }
+  persistListeningStats();
+}
+
+function markListeningSessionValid() {
+  const session = state.listeningSession;
+  const day = currentListeningDay();
+  if (!session || !day) return;
+  const track = day.tracks[session.trackKey] || { title: session.title, seconds: 0, plays: 0, valid: true };
+  track.title = session.title;
+  track.valid = true;
+  track.seconds = Math.max(Number(track.seconds) || 0, session.seconds);
+  track.plays += 1;
+  day.plays += 1;
+  day.tracks[session.trackKey] = track;
+  persistListeningStats(true);
 }
 
 function tickListeningStatistics() {
@@ -161,11 +196,10 @@ function tickListeningStatistics() {
   if (!state.listeningSession || state.listeningSession.trackId !== track.id) beginListeningSession(track);
   const session = state.listeningSession;
   session.seconds += 1;
+  recordListeningSecond();
   if (!session.valid && session.seconds >= 60) {
     session.valid = true;
-    recordValidListening(60, true);
-  } else if (session.valid) {
-    recordValidListening(1);
+    markListeningSessionValid();
   }
   updateStats();
 }
@@ -698,16 +732,16 @@ function renderStatistics() {
     <div class="stats-summary-grid">
       <article class="stats-summary-card primary"><span>音乐总数</span><strong>${tracks.length}</strong><small>首本地歌曲</small></article>
       <article class="stats-summary-card"><span>乐库总时长</span><strong>${formatDuration(totalDuration)}</strong><small>完整播放一遍</small></article>
-      <article class="stats-summary-card"><span>有效聆听</span><strong>${formatDuration(totalValidListeningSeconds())}</strong><small>听满 1 分钟才会计入</small></article>
+      <article class="stats-summary-card"><span>累计聆听</span><strong>${formatListeningDuration(totalListeningSeconds())}</strong><small>从播放第一秒开始累计</small></article>
       <article class="stats-summary-card"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><small>本地音乐文件</small></article>
     </div>
     <div class="listening-period-section">
-      <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>单次听满 1 分钟才算有效</small></div>
+      <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>时长实时累计 · 歌曲数需听满 1 分钟</small></div>
       <div class="listening-period-grid">
         ${listeningPeriods.map(([label, period]) => `
           <article class="listening-period-card">
             <span>${label}</span>
-            <strong>${formatDuration(period.seconds)}</strong>
+            <strong>${formatListeningDuration(period.seconds)}</strong>
             <div><em>${period.trackCount} 首歌曲</em><i>${period.plays} 次有效播放</i></div>
           </article>`).join('')}
       </div>
@@ -1295,6 +1329,14 @@ window.desktop.onDesktopLyricsLock((locked) => {
   state.desktopLyricsSettings.locked = locked;
   applyDesktopLyricsSettings({ updateVisibility: false });
   showToast(locked ? '桌面歌词已锁定' : '桌面歌词已解锁');
+});
+window.desktop.onDesktopLyricsSettings((settings) => {
+  if (!settings || typeof settings !== 'object') return;
+  state.desktopLyricsSettings = { ...state.desktopLyricsSettings, ...settings };
+  persistAppSettings();
+  renderDesktopLyricsSettings();
+  updateDesktopLyrics();
+  showToast('桌面歌词外观已更新');
 });
 
 async function init() {

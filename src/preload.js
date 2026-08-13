@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('desktop', {
   setDesktopLyricsSettings: (settings) => ipcRenderer.send('desktop-lyrics:set-settings', settings),
   onDesktopLyricsVisibility: (callback) => ipcRenderer.on('desktop-lyrics:visibility', (_event, value) => callback(value)),
   onDesktopLyricsLock: (callback) => ipcRenderer.on('desktop-lyrics:lock', (_event, value) => callback(value)),
+  onDesktopLyricsSettings: (callback) => ipcRenderer.on('desktop-lyrics:settings-updated', (_event, value) => callback(value)),
   minimize: () => ipcRenderer.send('window:minimize'),
   toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
   close: () => ipcRenderer.send('window:close'),

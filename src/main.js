@@ -320,15 +320,19 @@ ipcMain.on('desktop-lyrics:update', (_event, payload) => {
 });
 ipcMain.on('desktop-lyrics:set-settings', (_event, settings) => {
   if (!settings || typeof settings !== 'object') return;
+  const nextSettings = { ...desktopLyricsSettings, ...settings };
   desktopLyricsSettings = {
-    dualLine: settings.dualLine !== false,
-    locked: Boolean(settings.locked),
-    style: ['plain', 'classic', 'outline', 'soft'].includes(settings.style) ? settings.style : 'classic',
-    primaryColor: /^#[0-9a-f]{6}$/i.test(settings.primaryColor) ? settings.primaryColor : '#ff3156',
-    secondaryColor: /^#[0-9a-f]{6}$/i.test(settings.secondaryColor) ? settings.secondaryColor : '#ffffff'
+    dualLine: nextSettings.dualLine !== false,
+    locked: Boolean(nextSettings.locked),
+    style: ['plain', 'classic', 'outline', 'soft'].includes(nextSettings.style) ? nextSettings.style : 'classic',
+    primaryColor: /^#[0-9a-f]{6}$/i.test(nextSettings.primaryColor) ? nextSettings.primaryColor : '#ff3156',
+    secondaryColor: /^#[0-9a-f]{6}$/i.test(nextSettings.secondaryColor) ? nextSettings.secondaryColor : '#ffffff'
   };
   applyDesktopLyricsWindowLock();
   desktopLyricsWindow?.webContents.send('desktop-lyrics:settings', desktopLyricsSettings);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('desktop-lyrics:settings-updated', desktopLyricsSettings);
+  }
 });
 ipcMain.on('desktop-lyrics:set-locked', (_event, locked) => setDesktopLyricsLocked(locked));
 ipcMain.on('desktop-lyrics:hide', () => setDesktopLyricsVisible(false));
