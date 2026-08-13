@@ -6,7 +6,7 @@
 * { box-sizing: border-box; }
 html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
 body { font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; user-select: none; }
-.lyrics-shell { height: 100%; padding: 31px 56px 20px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; -webkit-app-region: drag; }
+.lyrics-shell { height: 100%; padding: 31px 56px 20px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: move; -webkit-app-region: no-drag; }
 .lyrics-shell::before { content: ""; position: absolute; inset: 15px 18px 10px; border-radius: 22px; background: rgba(12, 12, 14, .06); border: 1px solid rgba(255,255,255,.05); opacity: 0; transition: opacity .18s; backdrop-filter: blur(16px); }
 .lyrics-shell::after { content: ""; position: absolute; z-index: 3; inset: 7px; border: 1px dashed rgba(255,49,86,.92); border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 0 0 1px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .16s; }
 .lyrics-shell:hover::before, .lyrics-shell.show-bounds::before { opacity: 1; }
@@ -19,7 +19,7 @@ body { font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; u
 .hover-toolbar button:hover { background: #cf0a2c; }
 .hover-toolbar #lockLyricsBtn { font-size: 10px; font-weight: 700; }
 .hover-toolbar #lockLyricsBtn.active { color: #fff; background: #cf0a2c; }
-body[data-locked="true"] .lyrics-shell { -webkit-app-region: no-drag; }
+body[data-locked="true"] .lyrics-shell { cursor: default; }
 body[data-locked="true"] .lyrics-shell.show-bounds::after { border-style: solid; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 0 0 2px rgba(207,10,44,.25); }
 .song-context { position: relative; z-index: 1; display: flex; gap: 8px; align-items: center; max-width: 80%; margin-bottom: 3px; color: rgba(255,255,255,.72); font-size: 11px; letter-spacing: .04em; text-shadow: 0 2px 6px rgba(0,0,0,.9); opacity: 0; transform: translateY(3px); transition: opacity .18s, transform .18s; }
 .lyrics-shell:hover .song-context { opacity: 1; transform: translateY(0); }

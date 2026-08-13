@@ -11,6 +11,7 @@ let mainWindow;
 let desktopLyricsWindow;
 let desktopLyricsVisible = false;
 let desktopLyricsPayload = null;
+let desktopLyricsDragState = null;
 let desktopLyricsSettings = {
   dualLine: true,
   locked: false,
@@ -109,7 +110,10 @@ function createDesktopLyricsWindow() {
     desktopLyricsWindow?.webContents.send('desktop-lyrics:update', desktopLyricsPayload);
     if (desktopLyricsVisible) desktopLyricsWindow?.showInactive();
   });
-  desktopLyricsWindow.on('closed', () => { desktopLyricsWindow = null; });
+  desktopLyricsWindow.on('closed', () => {
+    desktopLyricsDragState = null;
+    desktopLyricsWindow = null;
+  });
   return desktopLyricsWindow;
 }
 
@@ -122,6 +126,7 @@ function applyDesktopLyricsWindowLock() {
 
 function setDesktopLyricsLocked(locked, notifyMain = true) {
   desktopLyricsSettings.locked = Boolean(locked);
+  if (desktopLyricsSettings.locked) desktopLyricsDragState = null;
   applyDesktopLyricsWindowLock();
   desktopLyricsWindow?.webContents.send('desktop-lyrics:settings', desktopLyricsSettings);
   if (notifyMain && mainWindow && !mainWindow.isDestroyed()) {
@@ -336,6 +341,23 @@ ipcMain.on('desktop-lyrics:set-settings', (_event, settings) => {
 });
 ipcMain.on('desktop-lyrics:set-locked', (_event, locked) => setDesktopLyricsLocked(locked));
 ipcMain.on('desktop-lyrics:hide', () => setDesktopLyricsVisible(false));
+ipcMain.on('desktop-lyrics:drag-start', (event, point) => {
+  if (!desktopLyricsWindow || desktopLyricsWindow.isDestroyed() || desktopLyricsSettings.locked) return;
+  if (event.sender !== desktopLyricsWindow.webContents || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  const bounds = desktopLyricsWindow.getBounds();
+  desktopLyricsDragState = { offsetX: point.x - bounds.x, offsetY: point.y - bounds.y };
+});
+ipcMain.on('desktop-lyrics:drag-move', (event, point) => {
+  if (!desktopLyricsDragState || !desktopLyricsWindow || desktopLyricsWindow.isDestroyed() || desktopLyricsSettings.locked) return;
+  if (event.sender !== desktopLyricsWindow.webContents || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  const x = Math.round(point.x - desktopLyricsDragState.offsetX);
+  const y = Math.round(point.y - desktopLyricsDragState.offsetY);
+  desktopLyricsWindow.setPosition(x, y, false);
+});
+ipcMain.on('desktop-lyrics:drag-end', (event) => {
+  if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed() && event.sender !== desktopLyricsWindow.webContents) return;
+  desktopLyricsDragState = null;
+});
 
 app.whenReady().then(() => {
   migrateLegacyUserData()

@@ -11,6 +11,9 @@ const contextLockBtn = document.querySelector('#contextLockBtn');
 let settings = { dualLine: true, locked: false, style: 'classic', primaryColor: '#ff3156', secondaryColor: '#ffffff' };
 let currentPayload = null;
 let boundsTimer = null;
+let dragPointerId = null;
+let pendingDragPoint = null;
+let dragFrame = null;
 
 function applyVisualSettings() {
   document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
@@ -20,7 +23,7 @@ function applyVisualSettings() {
 
 function refreshContextMenu() {
   contextMenu.classList.toggle('locked-menu', settings.locked);
-  contextLockBtn.querySelector('span').textContent = settings.locked ? '解锁桌面歌词' : '锁定桌面歌词';
+  contextLockBtn.querySelector('span').textContent = settings.locked ? '解锁' : '锁定';
   contextLockBtn.querySelector('kbd').textContent = settings.locked ? '解' : '锁';
   contextMenu.querySelectorAll('[data-context-style]').forEach((button) => {
     button.classList.toggle('active', button.dataset.contextStyle === settings.style);
@@ -93,7 +96,36 @@ window.desktopLyrics.onSettings((nextSettings) => {
   render();
 });
 
-lyricsShell.addEventListener('pointerdown', showBounds);
+lyricsShell.addEventListener('pointerdown', (event) => {
+  showBounds();
+  if (event.button !== 0 || settings.locked || event.target.closest('button')) return;
+  closeContextMenu();
+  dragPointerId = event.pointerId;
+  lyricsShell.setPointerCapture(event.pointerId);
+  window.desktopLyrics.startDrag({ x: event.screenX, y: event.screenY });
+});
+lyricsShell.addEventListener('pointermove', (event) => {
+  if (event.pointerId !== dragPointerId) return;
+  pendingDragPoint = { x: event.screenX, y: event.screenY };
+  if (dragFrame) return;
+  dragFrame = requestAnimationFrame(() => {
+    dragFrame = null;
+    if (pendingDragPoint) window.desktopLyrics.moveDrag(pendingDragPoint);
+    pendingDragPoint = null;
+  });
+});
+function endLyricsDrag(event) {
+  if (event && event.pointerId !== dragPointerId) return;
+  if (dragPointerId === null) return;
+  if (lyricsShell.hasPointerCapture(dragPointerId)) lyricsShell.releasePointerCapture(dragPointerId);
+  dragPointerId = null;
+  pendingDragPoint = null;
+  if (dragFrame) cancelAnimationFrame(dragFrame);
+  dragFrame = null;
+  window.desktopLyrics.endDrag();
+}
+lyricsShell.addEventListener('pointerup', endLyricsDrag);
+lyricsShell.addEventListener('pointercancel', endLyricsDrag);
 document.addEventListener('contextmenu', (event) => {
   event.preventDefault();
   showBounds();
@@ -132,7 +164,10 @@ contextMenu.addEventListener('click', (event) => {
 document.addEventListener('pointerdown', (event) => {
   if (!contextMenu.hidden && !contextMenu.contains(event.target)) closeContextMenu();
 });
-window.addEventListener('blur', closeContextMenu);
+window.addEventListener('blur', () => {
+  closeContextMenu();
+  endLyricsDrag();
+});
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeContextMenu();
 });
