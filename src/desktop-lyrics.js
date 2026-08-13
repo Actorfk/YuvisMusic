@@ -7,6 +7,7 @@ const lockLyricsBtn = document.querySelector('#lockLyricsBtn');
 const dragHint = document.querySelector('#dragHint');
 const contextMenu = document.querySelector('#lyricsContextMenu');
 const contextLockBtn = document.querySelector('#contextLockBtn');
+const contextCloseBtn = document.querySelector('#contextCloseBtn');
 
 let settings = { dualLine: true, locked: false, style: 'classic', primaryColor: '#ff3156', secondaryColor: '#ffffff' };
 let currentPayload = null;
@@ -139,6 +140,10 @@ contextMenu.addEventListener('contextmenu', (event) => {
 contextLockBtn.addEventListener('click', () => {
   setLocked(!settings.locked);
   closeContextMenu();
+});
+contextCloseBtn.addEventListener('click', () => {
+  closeContextMenu();
+  window.desktopLyrics.hide();
 });
 contextMenu.addEventListener('click', (event) => {
   const styleButton = event.target.closest('[data-context-style]');

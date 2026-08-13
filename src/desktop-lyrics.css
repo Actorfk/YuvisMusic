@@ -39,6 +39,7 @@ body[data-lyric-style="soft"] .primary-line, body[data-lyric-style="soft"] .seco
 .context-menu-item, .context-submenu button { width: 100%; min-height: 30px; padding: 0 9px; border: 0; border-radius: 7px; color: inherit; background: transparent; font: 12px/1 "Segoe UI", "Microsoft YaHei", sans-serif; text-align: left; cursor: pointer; }
 .context-menu-item { display: flex; align-items: center; justify-content: space-between; }
 .context-menu-item:hover, .context-menu-item:focus-visible, .context-submenu button:hover, .context-submenu button:focus-visible { outline: 0; background: rgba(255,255,255,.1); }
+.context-close-item:hover, .context-close-item:focus-visible { color: #fff; background: rgba(207,10,44,.72); }
 .context-menu-item kbd { min-width: 20px; padding: 3px 4px; border: 0; border-radius: 5px; color: rgba(255,255,255,.58); background: rgba(255,255,255,.08); font: 10px/1 "Microsoft YaHei", sans-serif; text-align: center; }
 .context-menu-item b { color: rgba(255,255,255,.55); font-size: 17px; font-weight: 400; }
 .context-submenu-host { position: relative; }

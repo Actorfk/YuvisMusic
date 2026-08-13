@@ -1253,7 +1253,7 @@ document.addEventListener('pointerdown', (event) => {
     closeQueueMenu();
   }
   const actionable = event.target.closest('button, input, select, textarea, label, a, [role="button"], [data-track-id], [data-queue-id], [data-playlist-id]');
-  if (state.playerOpen && actionable && !actionable.closest('.now-playing-sheet') && !actionable.closest('.player-bar')) {
+  if (state.playerOpen && actionable && !actionable.closest('.now-playing-sheet') && !actionable.closest('.player-bar') && !actionable.closest('.queue-panel')) {
     closeNowPlayingPage();
   }
 });
