@@ -28,7 +28,7 @@ button, input { font: inherit; }
 button { border: 0; background: none; color: inherit; cursor: pointer; }
 svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-.app-shell { height: 100vh; display: grid; grid-template-rows: var(--titlebar-height) 1fr 96px; background: #e9e8e5; background-position: center; background-size: cover; }
+.app-shell { height: 100vh; display: grid; grid-template-rows: var(--titlebar-height) 1fr 96px; background: #e9e8e5; background-position: center; background-repeat: no-repeat; background-size: cover; }
 .titlebar { background: linear-gradient(90deg, #e7e6e3 0%, #ecebe8 48%, #f0efec 100%); display: flex; align-items: center; padding: 5px 12px 3px 14px; }
 .drag-region { -webkit-app-region: drag; flex: 1; align-self: stretch; display: flex; align-items: center; }
 .brand-mini { height: 29px; padding: 0 4px; display: flex; gap: 9px; align-items: center; color: #555357; font-weight: 650; font-size: 12px; letter-spacing: .02em; }
@@ -50,14 +50,14 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .window-btn:focus-visible { outline: 2px solid rgba(var(--accent-rgb),.28); outline-offset: 1px; }
 
 .workspace { min-height: 0; display: grid; grid-template-columns: var(--sidebar-width) minmax(560px, 1fr); gap: var(--workspace-gap); padding: var(--workspace-edge); background: #e9e8e5; }
-body[data-custom-background="true"] .app-shell { background-image: linear-gradient(rgba(232,231,228,.28), rgba(232,231,228,.42)), var(--app-background-image); }
-body[data-custom-background="true"] .titlebar { background: rgba(239,238,235,.76); backdrop-filter: blur(18px) saturate(1.12); }
+body[data-custom-background="true"] .app-shell { background-color: #e9e8e5; background-image: var(--app-background-image); background-position: center; background-repeat: no-repeat; background-size: cover; }
+body[data-custom-background="true"] .titlebar { background: rgba(239,238,235,.7); backdrop-filter: blur(18px) saturate(1.12); }
 body[data-custom-background="true"] .workspace { background: transparent; }
-body[data-custom-background="true"] .sidebar { background: rgba(241,241,239,.86); backdrop-filter: blur(20px) saturate(1.08); }
-body[data-custom-background="true"] .main-content { background: rgba(247,247,245,.88); backdrop-filter: blur(20px) saturate(1.08); }
-body[data-custom-background="true"] .player-bar { background: rgba(255,255,255,.9); backdrop-filter: blur(22px) saturate(1.1); }
-body[data-custom-background="true"] .queue-panel { background: rgba(248,248,246,.94); backdrop-filter: blur(20px) saturate(1.1); }
-body[data-custom-background="true"] .now-playing-sheet { background: linear-gradient(135deg, rgba(239,238,234,.93), rgba(250,249,247,.94) 48%, rgba(240,238,234,.93)); backdrop-filter: blur(24px); }
+body[data-custom-background="true"] .sidebar { background: rgba(241,241,239,.78); backdrop-filter: blur(20px) saturate(1.08); }
+body[data-custom-background="true"] .main-content { background: rgba(247,247,245,.8); backdrop-filter: blur(20px) saturate(1.08); }
+body[data-custom-background="true"] .player-bar { background: rgba(255,255,255,.84); backdrop-filter: blur(22px) saturate(1.1); }
+body[data-custom-background="true"] .queue-panel { background: rgba(248,248,246,.9); backdrop-filter: blur(20px) saturate(1.1); }
+body[data-custom-background="true"] .now-playing-sheet { background: linear-gradient(135deg, rgba(239,238,234,.87), rgba(250,249,247,.89) 48%, rgba(240,238,234,.87)); backdrop-filter: blur(24px); }
 .sidebar { background: var(--sidebar); border: 1px solid rgba(35,30,30,.055); border-radius: var(--panel-radius); padding: 28px 18px 22px; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 10px 34px rgba(25,20,20,.035); }
 .brand { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 11px; }
 .brand-mark { width: 36px; height: 36px; border-radius: 11px; background: var(--ink); display: grid; place-items: center; box-shadow: 0 6px 15px rgba(0,0,0,.13); transform: rotate(-5deg); }
