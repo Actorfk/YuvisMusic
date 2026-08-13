@@ -215,6 +215,18 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .stats-summary-card strong { display: block; margin-top: 17px; font-size: clamp(20px, 2vw, 28px); line-height: 1; letter-spacing: -.04em; white-space: nowrap; }
 .stats-summary-card.primary strong { color: #fff; }
 .stats-summary-card small { display: block; margin-top: 9px; color: #aaa; font-size: 10px; }
+.listening-period-section { margin-top: 15px; padding: 18px 20px 20px; border: 1px solid var(--line); border-radius: 17px; background: rgba(255,255,255,.72); }
+.listening-period-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+.listening-period-heading span { display: block; margin-bottom: 3px; color: var(--red); font-size: 9px; font-weight: 750; letter-spacing: .15em; }
+.listening-period-heading h3 { margin: 0; font-size: 17px; }
+.listening-period-heading small { color: #999; font-size: 10px; }
+.listening-period-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.listening-period-card { min-width: 0; padding: 14px 15px; border-radius: 13px; background: #f2f1ef; }
+.listening-period-card > span { color: #888; font-size: 10px; }
+.listening-period-card > strong { display: block; margin: 9px 0 10px; overflow: hidden; text-overflow: ellipsis; color: #333; font-size: 20px; letter-spacing: -.03em; white-space: nowrap; }
+.listening-period-card > div { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.listening-period-card em, .listening-period-card i { color: #999; font-size: 9px; font-style: normal; }
+.listening-period-card em { color: var(--red); }
 .stats-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 15px 0; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.55); overflow: hidden; }
 .stats-facts div { min-height: 66px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; border-right: 1px solid var(--line); }
 .stats-facts div:last-child { border-right: 0; }
@@ -447,6 +459,7 @@ body.is-playing .play-button .pause-icon { display: block; }
   .detail-vinyl { width: 215px; }
   .queue-panel { right: 12px; width: min(360px, calc(100vw - 24px)); }
   .stats-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .listening-period-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stats-facts div:nth-child(3) { border-right: 0; }
   .stats-facts div:nth-child(-n+3) { border-bottom: 1px solid var(--line); }

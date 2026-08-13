@@ -48,7 +48,10 @@ const state = {
   shuffle: Boolean(savedAppSettings.shuffle),
   repeat: ['off', 'all', 'one'].includes(savedAppSettings.repeat) ? savedAppSettings.repeat : 'off',
   settingsSection: 'playback',
-  listeningSeconds: Number(localStorage.getItem('listeningSeconds') || 0)
+  listeningSeconds: Number(localStorage.getItem('listeningSeconds') || 0),
+  listeningStats: readStorage('listeningStats', { days: {} }),
+  listeningSession: null,
+  listeningPersistTicks: 0
 };
 
 const viewNames = {
@@ -76,6 +79,95 @@ function formatDuration(seconds) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return minutes ? `${hours} 小时 ${minutes} 分` : `${hours} 小时`;
+}
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function periodStart(period, now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'week') {
+    const mondayOffset = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - mondayOffset);
+  } else if (period === 'month') {
+    start.setDate(1);
+  } else if (period === 'year') {
+    start.setMonth(0, 1);
+  }
+  return start;
+}
+
+function aggregateListeningPeriod(period) {
+  const startKey = localDateKey(periodStart(period));
+  const endKey = localDateKey();
+  const result = { seconds: 0, plays: 0, tracks: new Set() };
+  Object.entries(state.listeningStats?.days || {}).forEach(([dateKey, day]) => {
+    if (dateKey < startKey || dateKey > endKey) return;
+    result.seconds += Number(day.seconds) || 0;
+    result.plays += Number(day.plays) || 0;
+    Object.entries(day.tracks || {}).forEach(([trackKey, track]) => {
+      if ((Number(track.seconds) || 0) >= 60 || (Number(track.plays) || 0) > 0) result.tracks.add(trackKey);
+    });
+  });
+  return { seconds: result.seconds, plays: result.plays, trackCount: result.tracks.size };
+}
+
+function totalValidListeningSeconds() {
+  return Object.values(state.listeningStats?.days || {}).reduce((sum, day) => sum + (Number(day.seconds) || 0), 0);
+}
+
+function beginListeningSession(track) {
+  state.listeningSession = track ? {
+    trackId: track.id,
+    trackKey: track.path || track.id,
+    title: track.title || '未知歌曲',
+    seconds: 0,
+    valid: false
+  } : null;
+}
+
+function recordValidListening(seconds, countPlay = false) {
+  const session = state.listeningSession;
+  if (!session || seconds <= 0) return;
+  if (!state.listeningStats || typeof state.listeningStats !== 'object') state.listeningStats = { days: {} };
+  if (!state.listeningStats.days || typeof state.listeningStats.days !== 'object') state.listeningStats.days = {};
+  const dateKey = localDateKey();
+  const day = state.listeningStats.days[dateKey] || { seconds: 0, plays: 0, tracks: {} };
+  const track = day.tracks[session.trackKey] || { title: session.title, seconds: 0, plays: 0 };
+  day.seconds += seconds;
+  track.seconds += seconds;
+  track.title = session.title;
+  if (countPlay) {
+    day.plays += 1;
+    track.plays += 1;
+  }
+  day.tracks[session.trackKey] = track;
+  state.listeningStats.days[dateKey] = day;
+  state.listeningPersistTicks += 1;
+  if (countPlay || state.listeningPersistTicks >= 5) {
+    localStorage.setItem('listeningStats', JSON.stringify(state.listeningStats));
+    state.listeningPersistTicks = 0;
+  }
+}
+
+function tickListeningStatistics() {
+  if (audio.paused || !state.currentId) return;
+  const track = currentTrack();
+  if (!track) return;
+  if (!state.listeningSession || state.listeningSession.trackId !== track.id) beginListeningSession(track);
+  const session = state.listeningSession;
+  session.seconds += 1;
+  if (!session.valid && session.seconds >= 60) {
+    session.valid = true;
+    recordValidListening(60, true);
+  } else if (session.valid) {
+    recordValidListening(1);
+  }
+  updateStats();
 }
 
 function escapeHtml(value = '') {
@@ -595,13 +687,30 @@ function renderStatistics() {
     ['5 分钟以上', tracks.filter((track) => Number(track.duration) > 300).length]
   ];
   const maxDurationGroup = Math.max(...durationGroups.map(([, value]) => value), 1);
+  const listeningPeriods = [
+    ['本日', 'today'],
+    ['本周', 'week'],
+    ['本月', 'month'],
+    ['年度', 'year']
+  ].map(([label, period]) => [label, aggregateListeningPeriod(period)]);
 
   $('#statsSection').innerHTML = `
     <div class="stats-summary-grid">
       <article class="stats-summary-card primary"><span>音乐总数</span><strong>${tracks.length}</strong><small>首本地歌曲</small></article>
       <article class="stats-summary-card"><span>乐库总时长</span><strong>${formatDuration(totalDuration)}</strong><small>完整播放一遍</small></article>
-      <article class="stats-summary-card"><span>累计聆听</span><strong>${formatDuration(state.listeningSeconds)}</strong><small>本机累计播放时间</small></article>
+      <article class="stats-summary-card"><span>有效聆听</span><strong>${formatDuration(totalValidListeningSeconds())}</strong><small>听满 1 分钟才会计入</small></article>
       <article class="stats-summary-card"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><small>本地音乐文件</small></article>
+    </div>
+    <div class="listening-period-section">
+      <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>单次听满 1 分钟才算有效</small></div>
+      <div class="listening-period-grid">
+        ${listeningPeriods.map(([label, period]) => `
+          <article class="listening-period-card">
+            <span>${label}</span>
+            <strong>${formatDuration(period.seconds)}</strong>
+            <div><em>${period.trackCount} 首歌曲</em><i>${period.plays} 次有效播放</i></div>
+          </article>`).join('')}
+      </div>
     </div>
     <div class="stats-facts">
       <div><span>喜欢的音乐</span><strong>${favoriteCount}</strong></div>
@@ -732,6 +841,7 @@ function addToHistory(id) {
 
 function loadTrack(track, autoplay = true) {
   if (!track) return;
+  beginListeningSession(track);
   state.currentId = track.id;
   if (!state.queue.some((item) => item.id === track.id)) state.queue.push(track);
   audio.src = track.url;
@@ -976,6 +1086,7 @@ $('#lyricsOffsetControl').addEventListener('click', (event) => {
 const lyricDrag = { pointerId: null, startY: 0, startScrollTop: 0, moved: false };
 $('#detailLyrics').addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
+  if (event.detail > 1) return;
   const container = event.currentTarget;
   lyricDrag.pointerId = event.pointerId;
   lyricDrag.startY = event.clientY;
@@ -1004,11 +1115,25 @@ $('#detailLyrics').addEventListener('pointerup', finishLyricDrag);
 $('#detailLyrics').addEventListener('pointercancel', finishLyricDrag);
 $('#detailLyrics').addEventListener('dblclick', (event) => {
   const line = event.target.closest('[data-lyric-time]');
-  if (!line || lyricDrag.moved || !Number.isFinite(audio.duration)) return;
-  audio.currentTime = Math.max(0, Number(line.dataset.lyricTime) + currentLyricOffset());
-  state.lyricManualScrollUntil = 0;
-  updateLyricPosition(audio.currentTime, true);
-  audio.play().catch(() => showToast('无法从这句歌词开始播放'));
+  if (!line || lyricDrag.moved || !state.currentId) return;
+  event.preventDefault();
+  const requestedTime = Math.max(0, Number(line.dataset.lyricTime) + currentLyricOffset());
+  if (!Number.isFinite(requestedTime)) return;
+  const seekAndPlay = () => {
+    const targetTime = Number.isFinite(audio.duration) ? Math.min(requestedTime, Math.max(0, audio.duration - .01)) : requestedTime;
+    try {
+      if (typeof audio.fastSeek === 'function') audio.fastSeek(targetTime);
+      else audio.currentTime = targetTime;
+      state.lyricManualScrollUntil = 0;
+      updatePlaybackProgress();
+      updateLyricPosition(targetTime, true);
+      audio.play().catch(() => showToast('无法从这句歌词开始播放'));
+    } catch {
+      showToast('歌词跳转失败，请稍后重试');
+    }
+  };
+  if (audio.readyState === 0) audio.addEventListener('loadedmetadata', seekAndPlay, { once: true });
+  else seekAndPlay();
 });
 $('#openNowPlaying').addEventListener('click', openNowPlayingPage);
 $('#closeNowPlayingBtn').addEventListener('click', closeNowPlayingPage);
@@ -1115,16 +1240,13 @@ audio.addEventListener('seeking', () => { updatePlaybackProgress(); updateLyricP
 audio.addEventListener('seeked', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); });
 audio.addEventListener('ratechange', () => { if (!audio.paused) runLyricClock(); });
 audio.addEventListener('ended', () => {
-  if (state.repeat === 'one') { audio.currentTime = 0; audio.play(); }
+  if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; audio.play(); }
   else if (state.repeat === 'all' || state.queue.findIndex((track) => track.id === state.currentId) < state.queue.length - 1) nextTrack(1);
 });
-setInterval(() => {
-  if (!audio.paused) {
-    state.listeningSeconds += 10;
-    localStorage.setItem('listeningSeconds', state.listeningSeconds);
-    updateStats();
-  }
-}, 10000);
+setInterval(tickListeningStatistics, 1000);
+window.addEventListener('beforeunload', () => {
+  localStorage.setItem('listeningStats', JSON.stringify(state.listeningStats));
+});
 
 $('#minimizeBtn').addEventListener('click', window.desktop.minimize);
 $('#maximizeBtn').addEventListener('click', window.desktop.toggleMaximize);
