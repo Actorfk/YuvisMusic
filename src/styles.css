@@ -283,12 +283,12 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .assistant-suggestions button:hover { color: var(--red); border-color: rgba(var(--accent-rgb),.28); background: var(--red-soft); }
 .assistant-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px 18px; scrollbar-width: thin; scrollbar-color: #d8d5d2 transparent; }
 .assistant-welcome:not([hidden]) + .assistant-messages:empty { display: none; }
-.assistant-message { max-width: 78%; margin: 12px 0; display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 9px; align-items: start; }
-.assistant-message > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; color: var(--red-bright); background: var(--ink); font-size: 12px; font-weight: 800; }
-.assistant-message p { min-width: 0; margin: 0; padding: 10px 13px; border: 1px solid var(--line); border-radius: 5px 14px 14px 14px; color: #454347; background: #fff; font-size: 13px; line-height: 1.65; white-space: pre-wrap; user-select: text; }
-.assistant-message.user { margin-left: auto; grid-template-columns: minmax(0,1fr) 30px; }
-.assistant-message.user > span { grid-column: 2; color: #fff; background: var(--red); }
-.assistant-message.user p { grid-column: 1; grid-row: 1; color: #fff; border-color: transparent; border-radius: 14px 5px 14px 14px; background: var(--red); }
+.assistant-message { width: fit-content; max-width: 78%; margin: 12px 0; display: flex; gap: 9px; align-items: flex-start; }
+.assistant-message > span { flex: 0 0 30px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; color: var(--red-bright); background: var(--ink); font-size: 12px; font-weight: 800; }
+.assistant-message p { flex: 0 1 auto; width: fit-content; min-width: 0; max-width: calc(100% - 39px); margin: 0; padding: 10px 13px; overflow-wrap: anywhere; word-break: normal; border: 1px solid var(--line); border-radius: 5px 14px 14px 14px; color: #454347; background: #fff; font-size: 13px; line-height: 1.65; white-space: pre-wrap; user-select: text; }
+.assistant-message.user { margin-left: auto; flex-direction: row-reverse; }
+.assistant-message.user > span { color: #fff; background: var(--red); }
+.assistant-message.user p { color: #fff; border-color: transparent; border-radius: 14px 5px 14px 14px; background: var(--red); }
 .assistant-message.thinking p { min-height: 39px; display: flex; align-items: center; gap: 4px; }
 .assistant-message.thinking i { width: 5px; height: 5px; border-radius: 50%; background: #aaa; animation: assistantPulse 1s ease-in-out infinite; }
 .assistant-message.thinking i:nth-child(2) { animation-delay: .16s; }
