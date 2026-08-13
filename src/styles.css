@@ -506,6 +506,19 @@ body.is-playing .play-button .pause-icon { display: block; }
 .appearance-theme-options [data-theme="jade"] i { background: #27805f; }
 .appearance-theme-options [data-theme="amber"] i { background: #b56a14; }
 .appearance-theme-options [data-theme="rose"] i { background: #bd3f70; }
+.appearance-font-block { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.font-size-options { margin-top: 11px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.font-size-options button { min-height: 67px; padding: 8px 6px; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 1fr auto; align-items: center; border: 1px solid var(--line); border-radius: 11px; color: #777; background: #fff; text-align: left; transition: .18s; }
+.font-size-options button:hover { border-color: #d0cdca; background: #faf9f7; transform: translateY(-1px); }
+.font-size-options button.active { color: var(--red); border-color: rgba(var(--accent-rgb),.36); background: var(--red-soft); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),.05); }
+.font-size-options button i { grid-column: 1 / -1; color: currentColor; font-style: normal; font-weight: 750; line-height: 1; }
+.font-size-options [data-font-size="small"] i { font-size: 13px; }
+.font-size-options [data-font-size="standard"] i { font-size: 15px; }
+.font-size-options [data-font-size="large"] i { font-size: 17px; }
+.font-size-options [data-font-size="extraLarge"] i { font-size: 19px; }
+.font-size-options button span { font-size: 10px; font-weight: 650; }
+.font-size-options button small { color: #aaa; font-size: 8px; }
+.font-size-options button.active small { color: currentColor; opacity: .7; }
 .yuvis-config-panel { padding-top: 20px; }
 .yuvis-config-intro { min-height: 62px; margin-bottom: 13px; padding: 10px 12px; display: flex; align-items: center; gap: 11px; border-radius: 13px; background: linear-gradient(135deg, var(--red-soft), #f7f6f4); }
 .yuvis-config-intro > span { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 11px; color: var(--red-bright); background: var(--ink); font-weight: 800; }

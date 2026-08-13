@@ -10,6 +10,13 @@ const APPEARANCE_THEMES = {
   rose: { color: '#bd3f70', bright: '#d44d83', soft: '#fff0f6', rgb: '189, 63, 112' }
 };
 
+const FONT_SIZE_OPTIONS = {
+  small: .9,
+  standard: 1,
+  large: 1.1,
+  extraLarge: 1.2
+};
+
 const ASSISTANT_SYSTEM_PROMPT = `你是 Yuvis 音乐播放器里的中文助手。你可以通过工具读取本地音乐状态并控制播放器。
 需要操作或查询软件时必须使用工具，不要假装操作成功。工具只影响用户本机的播放器。
 回答应自然、简洁；执行操作后说明结果。不要声称能访问工具没有返回的信息。`;
@@ -105,7 +112,8 @@ const state = {
     secondaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.secondaryColor) ? savedDesktopLyricsSettings.secondaryColor : '#ffffff'
   },
   appearanceSettings: {
-    theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson'
+    theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson',
+    fontSize: Object.hasOwn(FONT_SIZE_OPTIONS, savedAppearanceSettings.fontSize) ? savedAppearanceSettings.fontSize : 'standard'
   },
   equalizerSettings: {
     enabled: Boolean(savedEqualizerSettings.enabled),
@@ -621,7 +629,8 @@ function persistAppSettings() {
       presetId: state.equalizerSettings.presetId
     },
     appearance: {
-      theme: state.appearanceSettings.theme
+      theme: state.appearanceSettings.theme,
+      fontSize: state.appearanceSettings.fontSize
     }
   }));
 }
@@ -630,6 +639,9 @@ function renderAppearanceSettings() {
   const settings = state.appearanceSettings;
   $('#appearanceThemeOptions').querySelectorAll('[data-theme]').forEach((button) => {
     button.classList.toggle('active', button.dataset.theme === settings.theme);
+  });
+  $('#fontSizeOptions').querySelectorAll('[data-font-size]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.fontSize === settings.fontSize);
   });
 }
 
@@ -641,6 +653,7 @@ function applyAppearanceSettings({ persist = true } = {}) {
   rootStyle.setProperty('--accent-bright', theme.bright);
   rootStyle.setProperty('--accent-soft', theme.soft);
   rootStyle.setProperty('--accent-rgb', theme.rgb);
+  window.desktop.setInterfaceScale(FONT_SIZE_OPTIONS[settings.fontSize] || 1);
   if (persist) persistAppSettings();
   renderAppearanceSettings();
 }
@@ -1849,6 +1862,13 @@ $('#appearanceThemeOptions').addEventListener('click', (event) => {
   state.appearanceSettings.theme = button.dataset.theme;
   applyAppearanceSettings();
   showToast('主题主色已更新');
+});
+$('#fontSizeOptions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-font-size]');
+  if (!button || !Object.hasOwn(FONT_SIZE_OPTIONS, button.dataset.fontSize)) return;
+  state.appearanceSettings.fontSize = button.dataset.fontSize;
+  applyAppearanceSettings();
+  showToast(`字体大小已切换为「${button.querySelector('span').textContent}」`);
 });
 $('#equalizerBtn').addEventListener('click', openEqualizer);
 $('#aiDocsTitleBtn').addEventListener('click', () => openSettings('aiDocs'));
