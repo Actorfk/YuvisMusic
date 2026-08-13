@@ -6,6 +6,11 @@ const { pathToFileURL } = require('url');
 const AUDIO_EXTENSIONS = new Set([
   '.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'
 ]);
+const BACKGROUND_IMAGE_TYPES = new Map([
+  ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.png', 'image/png'],
+  ['.webp', 'image/webp'], ['.bmp', 'image/bmp'], ['.gif', 'image/gif']
+]);
+const MAX_BACKGROUND_IMAGE_BYTES = 20 * 1024 * 1024;
 
 let mainWindow;
 let desktopLyricsWindow;
@@ -43,6 +48,21 @@ async function migrateLegacyUserData() {
     console.log(`Migrated local library data from ${legacyName} to Yuvis音乐`);
     break;
   }
+}
+
+async function readBackgroundImage(imagePath) {
+  if (typeof imagePath !== 'string') return null;
+  const mimeType = BACKGROUND_IMAGE_TYPES.get(path.extname(imagePath).toLowerCase());
+  if (!mimeType) throw new Error('请选择支持的图片格式');
+  const file = await fs.stat(imagePath);
+  if (!file.isFile()) throw new Error('没有找到所选图片');
+  if (file.size > MAX_BACKGROUND_IMAGE_BYTES) throw new Error('背景图片不能超过 20 MB');
+  const data = await fs.readFile(imagePath);
+  return {
+    path: imagePath,
+    name: path.basename(imagePath),
+    dataUrl: `data:${mimeType};base64,${data.toString('base64')}`
+  };
 }
 
 function createWindow() {
@@ -281,6 +301,31 @@ ipcMain.handle('library:choose-folder', async () => {
 ipcMain.handle('library:restore', async (_event, paths) => {
   const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
   return loadTracks(validPaths);
+});
+
+ipcMain.handle('appearance:choose-background', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '选择应用背景图片',
+    buttonLabel: '设为背景',
+    properties: ['openFile'],
+    filters: [
+      { name: '图片文件', extensions: [...new Set([...BACKGROUND_IMAGE_TYPES.keys()].map((ext) => ext.slice(1)))] }
+    ]
+  });
+  if (result.canceled) return null;
+  try {
+    return await readBackgroundImage(result.filePaths[0]);
+  } catch (error) {
+    return { error: error.message || '无法读取所选图片' };
+  }
+});
+
+ipcMain.handle('appearance:read-background', async (_event, imagePath) => {
+  try {
+    return await readBackgroundImage(imagePath);
+  } catch {
+    return null;
+  }
 });
 
 ipcMain.handle('lyrics:choose-file', async () => {
