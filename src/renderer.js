@@ -45,7 +45,8 @@ const ASSISTANT_TOOLS = [
   { type: 'function', function: { name: 'create_playlist', description: '创建一个新的空歌单', parameters: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 30 } }, required: ['name'], additionalProperties: false } } },
   { type: 'function', function: { name: 'play_playlist', description: '按名称播放一个歌单', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
   { type: 'function', function: { name: 'add_current_to_playlist', description: '把当前歌曲添加到指定歌单', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
-  { type: 'function', function: { name: 'get_listening_statistics', description: '读取本日、本周、本月和年度的听歌时长与有效歌曲数', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_listening_statistics', description: '读取近一天、近一周、近一个月和近一年的听歌时长、有效歌曲数、播放次数与听得最多的歌曲', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_most_played_tracks', description: '按时间范围查询听得最多的歌曲及有效播放次数', parameters: { type: 'object', properties: { period: { type: 'string', enum: ['day', 'week', 'month', 'year'] }, limit: { type: 'integer', minimum: 1, maximum: 10 } }, required: ['period'], additionalProperties: false } } },
   { type: 'function', function: { name: 'set_desktop_lyrics', description: '开启或关闭桌面歌词', parameters: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false } } }
 ];
 
@@ -54,7 +55,7 @@ const AI_TOOL_GROUPS = [
   { name: '音乐库与内容', summary: '搜索歌曲、读取收藏、记录、概况和歌词', tools: ['search_library', 'get_favorite_tracks', 'get_recent_tracks', 'get_library_summary', 'get_current_lyrics'] },
   { name: '播放队列', summary: '查看、添加、移出或清空队列', tools: ['get_queue', 'add_to_queue', 'remove_from_queue', 'clear_queue'] },
   { name: '收藏与歌单', summary: '管理当前收藏，读取、创建和播放歌单', tools: ['set_current_favorite', 'get_playlists', 'create_playlist', 'play_playlist', 'add_current_to_playlist'] },
-  { name: '统计与桌面歌词', summary: '读取听歌统计并控制桌面歌词', tools: ['get_listening_statistics', 'set_desktop_lyrics'] }
+  { name: '统计与桌面歌词', summary: '读取听歌统计并控制桌面歌词', tools: ['get_listening_statistics', 'get_most_played_tracks', 'set_desktop_lyrics'] }
 ];
 
 const EQUALIZER_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -188,30 +189,37 @@ function localDateKey(date = new Date()) {
 
 function periodStart(period, now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === 'week') {
-    const mondayOffset = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - mondayOffset);
-  } else if (period === 'month') {
-    start.setDate(1);
-  } else if (period === 'year') {
-    start.setMonth(0, 1);
-  }
+  const offsets = { day: 0, today: 0, week: 6, month: 29, year: 364 };
+  start.setDate(start.getDate() - (offsets[period] ?? 0));
   return start;
 }
 
 function aggregateListeningPeriod(period) {
   const startKey = localDateKey(periodStart(period));
   const endKey = localDateKey();
-  const result = { seconds: 0, plays: 0, tracks: new Set() };
+  const result = { seconds: 0, plays: 0, tracks: new Map() };
   Object.entries(state.listeningStats?.days || {}).forEach(([dateKey, day]) => {
     if (dateKey < startKey || dateKey > endKey) return;
     result.seconds += Number(day.seconds) || 0;
     result.plays += Number(day.plays) || 0;
     Object.entries(day.tracks || {}).forEach(([trackKey, track]) => {
-      if (track.valid || (Number(track.seconds) || 0) >= 60 || (Number(track.plays) || 0) > 0) result.tracks.add(trackKey);
+      const seconds = Number(track.seconds) || 0;
+      const plays = Number(track.plays) || 0;
+      if (!track.valid && seconds < 60 && plays <= 0) return;
+      const aggregated = result.tracks.get(trackKey) || { title: track.title || '未知歌曲', plays: 0, seconds: 0 };
+      aggregated.title = track.title || aggregated.title;
+      aggregated.plays += plays;
+      aggregated.seconds += seconds;
+      result.tracks.set(trackKey, aggregated);
     });
   });
-  return { seconds: result.seconds, plays: result.plays, trackCount: result.tracks.size };
+  const topTracks = [...result.tracks.values()].sort((a, b) => b.plays - a.plays || b.seconds - a.seconds || a.title.localeCompare(b.title, 'zh-CN'));
+  return { seconds: result.seconds, plays: result.plays, trackCount: result.tracks.size, topTrack: topTracks[0] || null, topTracks };
+}
+
+function listeningPeriodSummary(period) {
+  const { seconds, plays, trackCount, topTrack } = aggregateListeningPeriod(period);
+  return { seconds, plays, trackCount, topTrack };
 }
 
 function totalListeningSeconds() {
@@ -1078,10 +1086,10 @@ function renderStatistics() {
   ];
   const maxDurationGroup = Math.max(...durationGroups.map(([, value]) => value), 1);
   const listeningPeriods = [
-    ['本日', 'today'],
-    ['本周', 'week'],
-    ['本月', 'month'],
-    ['年度', 'year']
+    ['近一天', 'day'],
+    ['近一周', 'week'],
+    ['近一个月', 'month'],
+    ['近一年', 'year']
   ].map(([label, period]) => [label, aggregateListeningPeriod(period)]);
 
   $('#statsSection').innerHTML = `
@@ -1099,6 +1107,11 @@ function renderStatistics() {
             <span>${label}</span>
             <strong>${formatListeningDuration(period.seconds)}</strong>
             <div><em>${period.trackCount} 首歌曲</em><i>${period.plays} 次有效播放</i></div>
+            <section class="listening-period-top">
+              <small>听得最多</small>
+              <b title="${escapeHtml(period.topTrack?.title || '暂无数据')}">${escapeHtml(period.topTrack?.title || '暂无数据')}</b>
+              <em>${period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放'}</em>
+            </section>
           </article>`).join('')}
       </div>
     </div>
@@ -1337,7 +1350,13 @@ async function executeAssistantTool(name, args = {}) {
     return { ok: true, added: !exists, playlist: playlist.name, track: assistantTrack(track) };
   }
   if (name === 'get_listening_statistics') {
-    return Object.fromEntries(['today', 'week', 'month', 'year'].map((period) => [period, aggregateListeningPeriod(period)]));
+    return Object.fromEntries(['day', 'week', 'month', 'year'].map((period) => [period, listeningPeriodSummary(period)]));
+  }
+  if (name === 'get_most_played_tracks') {
+    const period = ['day', 'week', 'month', 'year'].includes(args.period) ? args.period : 'day';
+    const limit = Math.max(1, Math.min(10, Number(args.limit) || 5));
+    const stats = aggregateListeningPeriod(period);
+    return { period, ...listeningPeriodSummary(period), tracks: stats.topTracks.slice(0, limit) };
   }
   if (name === 'set_desktop_lyrics') {
     state.desktopLyricsSettings.enabled = Boolean(args.enabled);
