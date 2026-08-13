@@ -50,6 +50,20 @@ const AI_TOOL_GROUPS = [
   { name: '统计与桌面歌词', summary: '读取听歌统计并控制桌面歌词', tools: ['get_listening_statistics', 'set_desktop_lyrics'] }
 ];
 
+const EQUALIZER_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+const BUILTIN_EQUALIZER_PRESETS = {
+  flat: { name: '默认 · 平直', gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  bass: { name: '低音增强', gains: [6, 5, 4, 2, 0, -1, -1, 0, 1, 2] },
+  vocal: { name: '人声清晰', gains: [-2, -1, 0, 2, 4, 4, 3, 1, -1, -2] },
+  rock: { name: '摇滚现场', gains: [4, 3, 1, -1, -2, 1, 3, 4, 4, 3] },
+  classical: { name: '古典宽广', gains: [3, 2, 1, 0, -1, -1, 0, 1, 2, 3] },
+  night: { name: '深夜柔和', gains: [-3, -2, 0, 2, 3, 3, 2, 0, -2, -3] }
+};
+
+let equalizerAudioContext = null;
+let equalizerSourceNode = null;
+let equalizerFilterNodes = [];
+
 function readStorage(key, fallback) {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -62,6 +76,8 @@ function readStorage(key, fallback) {
 const savedAppSettings = readStorage('appSettings', {});
 const savedDesktopLyricsSettings = savedAppSettings.desktopLyrics || readStorage('desktopLyricsSettings', {});
 const savedAppearanceSettings = savedAppSettings.appearance || {};
+const savedEqualizerSettings = savedAppSettings.equalizer || {};
+const savedEqualizerPresets = readStorage('equalizerPresets', []);
 const savedVolume = Number(savedAppSettings.volume ?? .8);
 
 const state = {
@@ -91,6 +107,12 @@ const state = {
   appearanceSettings: {
     theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson'
   },
+  equalizerSettings: {
+    enabled: Boolean(savedEqualizerSettings.enabled),
+    gains: normalizeEqualizerGains(savedEqualizerSettings.gains),
+    presetId: typeof savedEqualizerSettings.presetId === 'string' ? savedEqualizerSettings.presetId : 'builtin:flat'
+  },
+  equalizerPresets: normalizeEqualizerPresets(savedEqualizerPresets),
   assistantConfig: { model: '', baseUrl: 'https://api.openai.com/v1', hasApiKey: false, apiKeyProtected: false, loaded: false },
   assistantMessages: [],
   assistantBusy: false,
@@ -386,6 +408,206 @@ function lyricSourceLabel(lyrics) {
   return lyrics.synced ? '内嵌同步歌词' : '内嵌歌词';
 }
 
+function normalizeEqualizerGains(values) {
+  return EQUALIZER_BANDS.map((_, index) => {
+    const gain = Number(Array.isArray(values) ? values[index] : 0);
+    return Number.isFinite(gain) ? Math.max(-12, Math.min(12, Math.round(gain * 2) / 2)) : 0;
+  });
+}
+
+function normalizeEqualizerPresets(presets) {
+  if (!Array.isArray(presets)) return [];
+  const names = new Set();
+  return presets.filter((preset) => preset && typeof preset === 'object').map((preset, index) => ({
+    id: String(preset.id || `saved-${index}`).slice(0, 80),
+    name: String(preset.name || '').trim().slice(0, 24),
+    gains: normalizeEqualizerGains(preset.gains)
+  })).filter((preset) => {
+    const key = preset.name.toLocaleLowerCase('zh-CN');
+    if (!key || names.has(key)) return false;
+    names.add(key);
+    return true;
+  }).slice(0, 30);
+}
+
+function persistEqualizerPresets() {
+  localStorage.setItem('equalizerPresets', JSON.stringify(state.equalizerPresets));
+}
+
+function ensureEqualizerAudioGraph() {
+  if (equalizerAudioContext) return true;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    showToast('当前系统不支持声音均衡器');
+    return false;
+  }
+  try {
+    equalizerAudioContext = new AudioContextClass();
+    equalizerSourceNode = equalizerAudioContext.createMediaElementSource(audio);
+    equalizerFilterNodes = EQUALIZER_BANDS.map((frequency) => {
+      const filter = equalizerAudioContext.createBiquadFilter();
+      filter.type = 'peaking';
+      filter.frequency.value = frequency;
+      filter.Q.value = 1.4;
+      return filter;
+    });
+    let previousNode = equalizerSourceNode;
+    equalizerFilterNodes.forEach((filter) => {
+      previousNode.connect(filter);
+      previousNode = filter;
+    });
+    previousNode.connect(equalizerAudioContext.destination);
+    applyEqualizerAudioValues();
+    return true;
+  } catch (error) {
+    console.warn('Unable to initialize equalizer:', error.message);
+    equalizerAudioContext = null;
+    equalizerSourceNode = null;
+    equalizerFilterNodes = [];
+    showToast('无法初始化声音均衡器');
+    return false;
+  }
+}
+
+function resumeEqualizerAudio() {
+  if (equalizerAudioContext?.state === 'suspended') equalizerAudioContext.resume().catch(() => {});
+}
+
+function applyEqualizerAudioValues() {
+  if (!equalizerAudioContext || !equalizerFilterNodes.length) return;
+  const currentTime = equalizerAudioContext.currentTime;
+  equalizerFilterNodes.forEach((filter, index) => {
+    const target = state.equalizerSettings.enabled ? state.equalizerSettings.gains[index] : 0;
+    filter.gain.cancelScheduledValues(currentTime);
+    filter.gain.setTargetAtTime(target, currentTime, .015);
+  });
+}
+
+function equalizerPresetName() {
+  const presetId = state.equalizerSettings.presetId;
+  if (presetId?.startsWith('builtin:')) return BUILTIN_EQUALIZER_PRESETS[presetId.slice(8)]?.name || '';
+  if (presetId?.startsWith('custom:')) return state.equalizerPresets.find((preset) => preset.id === presetId.slice(7))?.name || '';
+  return '';
+}
+
+function renderEqualizerPresetOptions() {
+  const select = $('#equalizerPresetSelect');
+  select.innerHTML = '<option value="">自定义调整</option>'
+    + Object.entries(BUILTIN_EQUALIZER_PRESETS).map(([id, preset]) => `<option value="builtin:${id}">${escapeHtml(preset.name)}</option>`).join('')
+    + (state.equalizerPresets.length ? '<optgroup label="我的方案">' + state.equalizerPresets.map((preset) => `<option value="custom:${escapeHtml(preset.id)}">${escapeHtml(preset.name)}</option>`).join('') + '</optgroup>' : '');
+  const available = [...select.options].some((option) => option.value === state.equalizerSettings.presetId);
+  if (!available) state.equalizerSettings.presetId = '';
+  select.value = state.equalizerSettings.presetId;
+  $('#deleteEqualizerPresetBtn').hidden = !select.value.startsWith('custom:');
+}
+
+function formatEqualizerFrequency(frequency) {
+  return frequency >= 1000 ? `${frequency / 1000}k` : String(frequency);
+}
+
+function renderEqualizerBands() {
+  $('#equalizerBands').innerHTML = EQUALIZER_BANDS.map((frequency, index) => {
+    const gain = state.equalizerSettings.gains[index];
+    return `<div class="equalizer-band">
+      <output data-eq-output="${index}">${gain > 0 ? '+' : ''}${gain.toFixed(1)}</output>
+      <input type="range" min="-12" max="12" step="0.5" value="${gain}" data-eq-band="${index}" aria-label="${formatEqualizerFrequency(frequency)} 赫兹增益" />
+      <label>${formatEqualizerFrequency(frequency)} Hz</label>
+    </div>`;
+  }).join('');
+}
+
+function renderEqualizerStatus() {
+  const settings = state.equalizerSettings;
+  const flat = settings.gains.every((gain) => gain === 0);
+  const presetName = equalizerPresetName();
+  $('#equalizerEnabledInput').checked = settings.enabled;
+  $('#equalizerStatus').textContent = !settings.enabled
+    ? '均衡器已关闭，声音保持原始输出'
+    : presetName ? `已启用「${presetName}」`
+      : flat ? '当前为默认平直音效' : '正在使用自定义音效';
+  $('#equalizerBtn').classList.toggle('active', settings.enabled && !flat);
+  $('#equalizerBtn').title = settings.enabled ? (presetName || '自定义均衡器') : '声音均衡器';
+}
+
+function renderEqualizer() {
+  renderEqualizerPresetOptions();
+  renderEqualizerBands();
+  renderEqualizerStatus();
+}
+
+function applyEqualizerSettings({ persist = true, render = true } = {}) {
+  state.equalizerSettings.gains = normalizeEqualizerGains(state.equalizerSettings.gains);
+  applyEqualizerAudioValues();
+  if (persist) persistAppSettings();
+  if (render) renderEqualizer(); else renderEqualizerStatus();
+}
+
+function openEqualizer() {
+  ensureEqualizerAudioGraph();
+  resumeEqualizerAudio();
+  renderEqualizer();
+  openModal($('#equalizerModal'));
+}
+
+function applyEqualizerPreset(presetId) {
+  let gains = null;
+  if (presetId.startsWith('builtin:')) gains = BUILTIN_EQUALIZER_PRESETS[presetId.slice(8)]?.gains;
+  else if (presetId.startsWith('custom:')) gains = state.equalizerPresets.find((preset) => preset.id === presetId.slice(7))?.gains;
+  if (!gains) return;
+  state.equalizerSettings.enabled = true;
+  state.equalizerSettings.gains = [...gains];
+  state.equalizerSettings.presetId = presetId;
+  applyEqualizerSettings();
+}
+
+function resetEqualizer() {
+  state.equalizerSettings.enabled = true;
+  state.equalizerSettings.gains = [...BUILTIN_EQUALIZER_PRESETS.flat.gains];
+  state.equalizerSettings.presetId = 'builtin:flat';
+  applyEqualizerSettings();
+  showToast('均衡器已恢复默认');
+}
+
+function saveEqualizerPreset() {
+  const input = $('#equalizerPresetNameInput');
+  const name = input.value.trim().slice(0, 24);
+  if (!name) return showToast('请先输入方案名称');
+  const nameKey = name.toLocaleLowerCase('zh-CN');
+  let preset = state.equalizerPresets.find((item) => item.name.toLocaleLowerCase('zh-CN') === nameKey);
+  if (preset) {
+    preset.name = name;
+    preset.gains = [...state.equalizerSettings.gains];
+  } else {
+    if (state.equalizerPresets.length >= 30) return showToast('最多保存 30 个均衡器方案');
+    preset = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, name, gains: [...state.equalizerSettings.gains] };
+    state.equalizerPresets.push(preset);
+  }
+  state.equalizerSettings.presetId = `custom:${preset.id}`;
+  state.equalizerSettings.enabled = true;
+  persistEqualizerPresets();
+  applyEqualizerSettings();
+  input.value = '';
+  showToast(`均衡器方案「${name}」已保存`);
+}
+
+function deleteEqualizerPreset() {
+  const presetId = state.equalizerSettings.presetId;
+  if (!presetId.startsWith('custom:')) return;
+  const id = presetId.slice(7);
+  const preset = state.equalizerPresets.find((item) => item.id === id);
+  if (!preset || !window.confirm(`确定删除均衡器方案「${preset.name}」吗？`)) return;
+  state.equalizerPresets = state.equalizerPresets.filter((item) => item.id !== id);
+  persistEqualizerPresets();
+  resetEqualizer();
+  showToast('均衡器方案已删除');
+}
+
+function playAudio() {
+  if (state.equalizerSettings.enabled || equalizerAudioContext) ensureEqualizerAudioGraph();
+  resumeEqualizerAudio();
+  return audio.play();
+}
+
 function persistAppSettings() {
   localStorage.setItem('appSettings', JSON.stringify({
     volume: state.volume,
@@ -393,6 +615,11 @@ function persistAppSettings() {
     shuffle: state.shuffle,
     repeat: state.repeat,
     desktopLyrics: state.desktopLyricsSettings,
+    equalizer: {
+      enabled: state.equalizerSettings.enabled,
+      gains: state.equalizerSettings.gains,
+      presetId: state.equalizerSettings.presetId
+    },
     appearance: {
       theme: state.appearanceSettings.theme
     }
@@ -911,7 +1138,7 @@ async function executeAssistantTool(name, args = {}) {
     if (args.action === 'pause') audio.pause();
     else if (args.action === 'toggle') togglePlay();
     else if (!state.currentId) togglePlay();
-    else await audio.play();
+    else await playAudio();
     return { ok: true, playing: !audio.paused, track: assistantTrack(currentTrack()) };
   }
   if (name === 'next_track' || name === 'previous_track') {
@@ -1427,7 +1654,7 @@ function loadTrack(track, autoplay = true) {
   renderLyrics(track);
   loadAssignedLyrics(track);
   updateStats();
-  if (autoplay) audio.play().catch(() => showToast('无法播放此音频文件'));
+  if (autoplay) playAudio().catch(() => showToast('无法播放此音频文件'));
 }
 
 function togglePlay() {
@@ -1436,7 +1663,7 @@ function togglePlay() {
     if (first) loadTrack(first); else showToast('请先添加音乐');
     return;
   }
-  audio.paused ? audio.play() : audio.pause();
+  audio.paused ? playAudio() : audio.pause();
 }
 
 function nextTrack(direction = 1) {
@@ -1623,6 +1850,43 @@ $('#appearanceThemeOptions').addEventListener('click', (event) => {
   applyAppearanceSettings();
   showToast('主题主色已更新');
 });
+$('#equalizerBtn').addEventListener('click', openEqualizer);
+$('#equalizerEnabledInput').addEventListener('change', (event) => {
+  state.equalizerSettings.enabled = event.target.checked;
+  applyEqualizerSettings({ render: false });
+  showToast(event.target.checked ? '均衡器已启用' : '均衡器已关闭');
+});
+$('#equalizerPresetSelect').addEventListener('change', (event) => {
+  if (event.target.value) applyEqualizerPreset(event.target.value);
+  else {
+    state.equalizerSettings.presetId = '';
+    applyEqualizerSettings({ render: false });
+  }
+});
+$('#equalizerBands').addEventListener('input', (event) => {
+  const range = event.target.closest('[data-eq-band]');
+  if (!range) return;
+  const index = Number(range.dataset.eqBand);
+  const gain = Math.max(-12, Math.min(12, Number(range.value) || 0));
+  state.equalizerSettings.gains[index] = gain;
+  state.equalizerSettings.enabled = true;
+  state.equalizerSettings.presetId = '';
+  const output = $(`[data-eq-output="${index}"]`);
+  output.textContent = `${gain > 0 ? '+' : ''}${gain.toFixed(1)}`;
+  $('#equalizerPresetSelect').value = '';
+  $('#deleteEqualizerPresetBtn').hidden = true;
+  applyEqualizerSettings({ persist: false, render: false });
+});
+$('#equalizerBands').addEventListener('change', () => persistAppSettings());
+$('#resetEqualizerBtn').addEventListener('click', resetEqualizer);
+$('#saveEqualizerPresetBtn').addEventListener('click', saveEqualizerPreset);
+$('#deleteEqualizerPresetBtn').addEventListener('click', deleteEqualizerPreset);
+$('#equalizerPresetNameInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveEqualizerPreset();
+  }
+});
 $('#saveAssistantConfigBtn').addEventListener('click', () => saveAssistantConfiguration(false));
 $('#clearAssistantKeyBtn').addEventListener('click', () => saveAssistantConfiguration(true));
 $('#openAssistantConfigBtn').addEventListener('click', () => openSettings('yuvis'));
@@ -1706,7 +1970,7 @@ function playFromLyricLine(line) {
       state.lyricManualScrollUntil = 0;
       updatePlaybackProgress();
       updateLyricPosition(targetTime, true);
-      audio.play()
+      playAudio()
         .then(() => showToast(`已从 ${formatTime(targetTime)} 开始播放`))
         .catch(() => showToast('无法从这句歌词开始播放'));
     } catch {
@@ -1895,7 +2159,7 @@ audio.addEventListener('seeking', () => { updatePlaybackProgress(); updateLyricP
 audio.addEventListener('seeked', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); });
 audio.addEventListener('ratechange', () => { if (!audio.paused) runLyricClock(); });
 audio.addEventListener('ended', () => {
-  if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; audio.play(); }
+  if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; playAudio(); }
   else if (state.repeat === 'all' || state.queue.findIndex((track) => track.id === state.currentId) < state.queue.length - 1) nextTrack(1);
 });
 setInterval(tickListeningStatistics, 1000);
@@ -1934,6 +2198,7 @@ window.desktop.onDesktopLyricsSettings((settings) => {
 async function init() {
   applyAppearanceSettings({ persist: false });
   applyPlaybackSettings();
+  applyEqualizerSettings({ persist: false });
   applyDesktopLyricsSettings();
   await loadAssistantConfig();
   renderView();

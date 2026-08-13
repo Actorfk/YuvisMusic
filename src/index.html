@@ -13,6 +13,12 @@
       <div class="drag-region">
         <div class="brand-mini"><span class="brand-dot"></span><span>Yuvis音乐</span></div>
       </div>
+      <div class="titlebar-tools">
+        <button id="equalizerBtn" class="equalizer-title-button" aria-label="打开声音均衡器" title="声音均衡器">
+          <svg viewBox="0 0 24 24"><path d="M4 7h5M15 7h5M9 4v6M4 17h3M13 17h7M7 14v6M4 12h9M19 12h1M13 9v6M15 7h.01"/></svg>
+          <span>均衡器</span>
+        </button>
+      </div>
       <div class="window-actions">
         <button id="minimizeBtn" class="window-btn" aria-label="最小化" title="最小化">
           <svg viewBox="0 0 16 16"><path d="M4 10.5h8" /></svg>
@@ -210,6 +216,32 @@
         <span id="qualityBadge">本地</span>
       </div>
     </footer>
+  </div>
+
+  <div class="modal-backdrop" id="equalizerModal" hidden>
+    <div class="equalizer-card">
+      <header class="equalizer-header">
+        <div><span class="equalizer-kicker">AUDIO EFFECTS</span><h3>声音均衡器</h3><p>实时调整不同频段，塑造适合你的声音。</p></div>
+        <div class="equalizer-header-actions">
+          <label class="equalizer-enable"><span>启用</span><input id="equalizerEnabledInput" class="switch-input" type="checkbox" /></label>
+          <button class="modal-close" data-close-modal aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+      </header>
+      <div class="equalizer-toolbar">
+        <label class="equalizer-preset-select"><span>当前方案</span><select id="equalizerPresetSelect"></select></label>
+        <button id="resetEqualizerBtn" class="equalizer-secondary-button" type="button"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>恢复默认</button>
+      </div>
+      <div class="equalizer-bands" id="equalizerBands" aria-label="十段声音均衡器"></div>
+      <div class="equalizer-scale"><span>+12 dB</span><i></i><span>0 dB</span><i></i><span>−12 dB</span></div>
+      <footer class="equalizer-footer">
+        <div class="equalizer-save-fields">
+          <input id="equalizerPresetNameInput" maxlength="24" autocomplete="off" placeholder="输入方案名称" />
+          <button id="saveEqualizerPresetBtn" type="button">保存方案</button>
+          <button id="deleteEqualizerPresetBtn" class="equalizer-delete-button" type="button" hidden>删除方案</button>
+        </div>
+        <span id="equalizerStatus">当前为默认平直音效</span>
+      </footer>
+    </div>
   </div>
 
   <div class="modal-backdrop" id="playlistModal" hidden>
