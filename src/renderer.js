@@ -70,6 +70,7 @@ const BUILTIN_EQUALIZER_PRESETS = {
 let equalizerAudioContext = null;
 let equalizerSourceNode = null;
 let equalizerFilterNodes = [];
+const scalableFontRules = new Map();
 
 function readStorage(key, fallback) {
   try {
@@ -645,6 +646,32 @@ function renderAppearanceSettings() {
   });
 }
 
+function collectScalableFontRules(rules) {
+  for (const rule of rules) {
+    if (rule.style?.fontSize && !scalableFontRules.has(rule.style)) scalableFontRules.set(rule.style, rule.style.fontSize);
+    if (rule.cssRules) collectScalableFontRules(rule.cssRules);
+  }
+}
+
+function scaledFontSize(value, factor) {
+  if (factor === 1) return value;
+  return value.replace(/(-?\d*\.?\d+)(px|vw|vh|rem|em)/g, (_match, number, unit) => {
+    const scaled = Math.round(Number(number) * factor * 1000) / 1000;
+    return `${scaled}${unit}`;
+  });
+}
+
+function applyFontSizeSetting() {
+  if (!scalableFontRules.size) {
+    for (const stylesheet of document.styleSheets) {
+      try { collectScalableFontRules(stylesheet.cssRules); } catch { /* Ignore inaccessible third-party stylesheets. */ }
+    }
+  }
+  const factor = FONT_SIZE_OPTIONS[state.appearanceSettings.fontSize] || 1;
+  for (const [style, originalFontSize] of scalableFontRules) style.fontSize = scaledFontSize(originalFontSize, factor);
+  document.documentElement.dataset.fontSize = state.appearanceSettings.fontSize;
+}
+
 function applyAppearanceSettings({ persist = true } = {}) {
   const settings = state.appearanceSettings;
   const theme = APPEARANCE_THEMES[settings.theme] || APPEARANCE_THEMES.crimson;
@@ -653,7 +680,7 @@ function applyAppearanceSettings({ persist = true } = {}) {
   rootStyle.setProperty('--accent-bright', theme.bright);
   rootStyle.setProperty('--accent-soft', theme.soft);
   rootStyle.setProperty('--accent-rgb', theme.rgb);
-  window.desktop.setInterfaceScale(FONT_SIZE_OPTIONS[settings.fontSize] || 1);
+  applyFontSizeSetting();
   if (persist) persistAppSettings();
   renderAppearanceSettings();
 }

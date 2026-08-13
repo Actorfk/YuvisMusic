@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('desktop', {
   chooseFiles: () => ipcRenderer.invoke('library:choose-files'),
@@ -11,11 +11,6 @@ contextBridge.exposeInMainWorld('desktop', {
   getAssistantConfig: () => ipcRenderer.invoke('assistant:get-config'),
   saveAssistantConfig: (config) => ipcRenderer.invoke('assistant:save-config', config),
   completeAssistant: (payload) => ipcRenderer.invoke('assistant:complete', payload),
-  setInterfaceScale: (factor) => {
-    const normalized = Math.max(.9, Math.min(1.2, Number(factor) || 1));
-    webFrame.setZoomFactor(normalized);
-    return webFrame.getZoomFactor();
-  },
   showInFolder: (filePath) => ipcRenderer.invoke('track:show-in-folder', filePath),
   setDesktopLyricsVisible: (visible) => ipcRenderer.send('desktop-lyrics:set-visible', visible),
   updateDesktopLyrics: (payload) => ipcRenderer.send('desktop-lyrics:update', payload),
