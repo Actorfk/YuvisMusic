@@ -90,6 +90,7 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .nav-item:hover { color: var(--ink); background: rgba(255,255,255,.58); }
 .nav-item.active { color: var(--red); background: #fff; font-weight: 600; box-shadow: 0 4px 20px rgba(30,25,25,.045); }
 .nav-item.active::before { content: ""; position: absolute; left: -18px; width: 3px; height: 19px; border-radius: 0 3px 3px 0; background: var(--red); }
+.playlist-nav .nav-item.file-drop-target { color: var(--red); background: var(--red-soft); box-shadow: inset 0 0 0 2px rgba(var(--accent-rgb),.4), 0 5px 18px rgba(var(--accent-rgb),.1); transform: translateX(3px); }
 .sidebar-settings-button { flex: none; margin-top: auto; }
 .sidebar-settings-button svg { width: 18px; }
 .sidebar-footer { margin-top: 12px; padding: 0 12px; color: #858487; }
@@ -99,6 +100,8 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .sidebar-footer small { display: block; font-size: 10px; color: #999; margin-top: 9px; }
 
 .main-content { min-width: 0; overflow-y: auto; padding: 34px clamp(28px, 3.2vw, 52px) 42px; border: 1px solid rgba(35,30,30,.05); border-radius: var(--panel-radius); background: var(--canvas); box-shadow: 0 12px 38px rgba(25,20,20,.04); scrollbar-width: thin; scrollbar-color: #d8d5d2 transparent; }
+body.library-file-drop::before, body.playlist-file-drop::before { content: "释放文件，添加到音乐库"; position: fixed; z-index: 190; top: calc(var(--titlebar-height) + var(--workspace-edge) + 8px); right: calc(var(--workspace-edge) + 8px); bottom: calc(96px + var(--workspace-edge) + 8px); left: calc(var(--workspace-edge) + var(--sidebar-width) + var(--workspace-gap) + 8px); display: grid; place-items: center; border: 2px dashed rgba(var(--accent-rgb),.68); border-radius: calc(var(--panel-radius) - 6px); color: var(--red); background: rgba(255,255,255,.9); box-shadow: inset 0 0 60px rgba(var(--accent-rgb),.08), 0 18px 50px rgba(25,20,20,.12); backdrop-filter: blur(12px); font-size: 17px; font-weight: 700; letter-spacing: .03em; pointer-events: none; }
+body.playlist-file-drop::before { content: "释放文件，添加到当前歌单"; }
 .main-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .main-header[hidden], .library-section[hidden] { display: none; }
 .eyebrow { color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .13em; margin: 0 0 5px; text-transform: uppercase; }

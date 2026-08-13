@@ -1,8 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('desktop', {
   chooseFiles: () => ipcRenderer.invoke('library:choose-files'),
   chooseFolder: () => ipcRenderer.invoke('library:choose-folder'),
+  loadDroppedTracks: (paths) => ipcRenderer.invoke('library:load-dropped', paths),
+  getDroppedFilePath: (file) => webUtils.getPathForFile(file),
   restoreTracks: (paths) => ipcRenderer.invoke('library:restore', paths),
   chooseLyricsFile: () => ipcRenderer.invoke('lyrics:choose-file'),
   readLyricsFile: (lyricsPath) => ipcRenderer.invoke('lyrics:read-file', lyricsPath),

@@ -218,24 +218,25 @@ async function findSidecarLyrics(filePath) {
 }
 
 async function getTrackInfo(filePath) {
-  const stats = await fs.stat(filePath);
+  const normalizedPath = path.resolve(filePath);
+  const stats = await fs.stat(normalizedPath);
   let metadata = {};
   try {
     const { parseFile } = await import('music-metadata');
-    metadata = await parseFile(filePath, { duration: true, skipCovers: false });
+    metadata = await parseFile(normalizedPath, { duration: true, skipCovers: false });
   } catch (error) {
-    console.warn(`Unable to parse metadata: ${filePath}`, error.message);
+    console.warn(`Unable to parse metadata: ${normalizedPath}`, error.message);
   }
 
   const common = metadata.common || {};
   const format = metadata.format || {};
-  const filename = path.basename(filePath, path.extname(filePath));
+  const filename = path.basename(normalizedPath, path.extname(normalizedPath));
   const embeddedLyrics = normalizeEmbeddedLyrics(common.lyrics, format);
-  const lyrics = embeddedLyrics || await findSidecarLyrics(filePath);
+  const lyrics = embeddedLyrics || await findSidecarLyrics(normalizedPath);
   return {
-    id: `${filePath}:${stats.mtimeMs}`,
-    path: filePath,
-    url: pathToFileURL(filePath).href,
+    id: `${normalizedPath}:${stats.mtimeMs}`,
+    path: normalizedPath,
+    url: pathToFileURL(normalizedPath).href,
     title: common.title || filename,
     artist: common.artist || common.albumartist || '未知艺术家',
     album: common.album || '未知专辑',
@@ -249,7 +250,14 @@ async function getTrackInfo(filePath) {
 }
 
 async function loadTracks(paths) {
-  const uniquePaths = [...new Set(paths)];
+  const uniquePathMap = new Map();
+  for (const filePath of Array.isArray(paths) ? paths : []) {
+    if (typeof filePath !== 'string' || !AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase())) continue;
+    const normalizedPath = path.resolve(filePath);
+    const key = process.platform === 'win32' ? normalizedPath.toLocaleLowerCase('en-US') : normalizedPath;
+    if (!uniquePathMap.has(key)) uniquePathMap.set(key, normalizedPath);
+  }
+  const uniquePaths = [...uniquePathMap.values()];
   const settled = await Promise.allSettled(uniquePaths.map(getTrackInfo));
   return settled.filter((item) => item.status === 'fulfilled').map((item) => item.value);
 }
@@ -279,6 +287,11 @@ ipcMain.handle('library:choose-folder', async () => {
 });
 
 ipcMain.handle('library:restore', async (_event, paths) => {
+  const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
+  return loadTracks(validPaths);
+});
+
+ipcMain.handle('library:load-dropped', async (_event, paths) => {
   const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
   return loadTracks(validPaths);
 });

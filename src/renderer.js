@@ -601,6 +601,10 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
+function trackPathKey(trackPath) {
+  return String(trackPath || '').replaceAll('/', '\\').toLocaleLowerCase('en-US');
+}
+
 function activePlaylist() {
   return state.playlists.find((playlist) => playlist.id === state.activePlaylistId);
 }
@@ -617,8 +621,8 @@ function getVisibleTracks() {
     tracks = tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id) - order.get(b.id));
   }
   if (state.view === 'playlist') {
-    const paths = new Set(activePlaylist()?.trackPaths || []);
-    tracks = tracks.filter((track) => paths.has(track.path));
+    const paths = new Set((activePlaylist()?.trackPaths || []).map(trackPathKey));
+    tracks = tracks.filter((track) => paths.has(trackPathKey(track.path)));
   }
   const query = state.search.trim().toLocaleLowerCase('zh-CN');
   if (query) {
@@ -634,8 +638,8 @@ function getVisibleTracks() {
 }
 
 function playlistTracks(playlist) {
-  const paths = new Set(playlist.trackPaths || []);
-  return state.library.filter((track) => paths.has(track.path));
+  const paths = new Set((playlist.trackPaths || []).map(trackPathKey));
+  return state.library.filter((track) => paths.has(trackPathKey(track.path)));
 }
 
 function playlistArtwork(playlist, size = 'small') {
@@ -672,11 +676,11 @@ function renderLibrary() {
   const emptyButton = $('#emptyAddBtn');
   if (state.view === 'playlist') {
     emptyTitle.textContent = '这个歌单还是空的';
-    emptyText.textContent = '前往音乐库，点击歌曲右侧的加号添加音乐';
+    emptyText.textContent = '将本地音乐文件拖到左侧歌单，或从音乐库添加';
     emptyButton.textContent = '前往音乐库';
   } else {
     emptyTitle.textContent = state.library.length ? '没有找到匹配的音乐' : '音乐库还是空的';
-    emptyText.textContent = state.library.length ? '换一个关键词试试看' : '添加本地音频文件，开启你的聆听旅程';
+    emptyText.textContent = state.library.length ? '换一个关键词试试看' : '拖入本地音乐文件，或点击按钮开始导入';
     emptyButton.textContent = state.library.length ? '清除搜索' : '选择音乐文件';
   }
   list.innerHTML = tracks.map((track, index) => `
@@ -883,14 +887,21 @@ function toggleQueueMenu() {
   document.body.classList.contains('queue-open') ? closeQueueMenu() : openQueueMenu();
 }
 
-function mergeTracks(newTracks) {
-  const existing = new Set(state.library.map((track) => track.path));
-  const additions = newTracks.filter((track) => !existing.has(track.path));
+function mergeTracks(newTracks, { notify = true } = {}) {
+  const existing = new Set(state.library.map((track) => trackPathKey(track.path)));
+  const additions = [];
+  newTracks.forEach((track) => {
+    const key = trackPathKey(track.path);
+    if (!key || existing.has(key)) return;
+    existing.add(key);
+    additions.push(track);
+  });
   state.library.push(...additions);
   persistLibrary();
   renderLibrary();
   updateStats();
-  showToast(additions.length ? `已添加 ${additions.length} 首音乐` : '没有发现新的音乐');
+  if (notify) showToast(additions.length ? `已添加 ${additions.length} 首音乐` : '没有发现新的音乐');
+  return additions;
 }
 
 async function importFiles() {
@@ -902,6 +913,70 @@ async function importFolder() {
   showToast('正在导入本地音乐…');
   const tracks = await window.desktop.chooseFolder();
   if (tracks.length) mergeTracks(tracks); else showToast('未找到可播放的音频文件');
+}
+
+function isFileDrag(dataTransfer) {
+  return [...(dataTransfer?.types || [])].includes('Files');
+}
+
+function droppedFilePaths(dataTransfer) {
+  return [...(dataTransfer?.files || [])].map((file) => {
+    try {
+      return window.desktop.getDroppedFilePath(file);
+    } catch {
+      return '';
+    }
+  }).filter(Boolean);
+}
+
+function clearFileDropTarget() {
+  document.body.classList.remove('library-file-drop', 'playlist-file-drop');
+  document.querySelectorAll('#playlistNav .file-drop-target').forEach((item) => item.classList.remove('file-drop-target'));
+}
+
+function updateFileDropTarget(target) {
+  clearFileDropTarget();
+  const element = target instanceof Element ? target : null;
+  const playlistItem = element?.closest('#playlistNav [data-playlist-id]');
+  if (playlistItem) {
+    playlistItem.classList.add('file-drop-target');
+    return;
+  }
+  if (element?.closest('.main-content') && state.view === 'playlist' && activePlaylist()) {
+    document.body.classList.add('playlist-file-drop');
+  } else if (element?.closest('.main-content, [data-view="library"]')) {
+    document.body.classList.add('library-file-drop');
+  }
+}
+
+async function importDroppedMusic(paths, playlistId = null) {
+  if (!paths.length) return showToast('没有读取到可导入的文件');
+  showToast('正在读取拖入的音乐…');
+  const tracks = await window.desktop.loadDroppedTracks(paths);
+  if (!tracks.length) return showToast('拖入的文件中没有支持的音乐');
+  const libraryAdditions = mergeTracks(tracks, { notify: false });
+  if (!playlistId) {
+    showToast(libraryAdditions.length ? `已添加 ${libraryAdditions.length} 首音乐` : '这些歌曲已在音乐库中');
+    return;
+  }
+  const playlist = state.playlists.find((item) => item.id === playlistId);
+  if (!playlist) return showToast('目标歌单已不存在');
+  const playlistPaths = new Set((playlist.trackPaths || []).map(trackPathKey));
+  let playlistAdditions = 0;
+  tracks.forEach((droppedTrack) => {
+    const libraryTrack = state.library.find((track) => trackPathKey(track.path) === trackPathKey(droppedTrack.path));
+    const key = trackPathKey(libraryTrack?.path);
+    if (!libraryTrack || playlistPaths.has(key)) return;
+    playlistPaths.add(key);
+    playlist.trackPaths.push(libraryTrack.path);
+    playlistAdditions += 1;
+  });
+  if (playlistAdditions) persistPlaylists();
+  renderPlaylistNav();
+  if (state.view === 'playlist' && state.activePlaylistId === playlistId) renderLibrary();
+  showToast(playlistAdditions
+    ? `已向「${playlist.name}」添加 ${playlistAdditions} 首音乐`
+    : `这些歌曲已在「${playlist.name}」中`);
 }
 
 function addToHistory(id) {
@@ -1026,7 +1101,7 @@ function addTrackToPlaylist(playlistId) {
   const playlist = state.playlists.find((item) => item.id === playlistId);
   const track = state.library.find((item) => item.id === state.pendingTrackId);
   if (!playlist || !track) return;
-  if (playlist.trackPaths.includes(track.path)) {
+  if (playlist.trackPaths.some((trackPath) => trackPathKey(trackPath) === trackPathKey(track.path))) {
     showToast('这首歌已经在歌单里了');
   } else {
     playlist.trackPaths.push(track.path);
@@ -1290,6 +1365,30 @@ document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEv
 document.querySelectorAll('.modal-backdrop').forEach((modal) => modal.addEventListener('click', (event) => {
   if (event.target === modal) closeModals();
 }));
+
+document.addEventListener('dragover', (event) => {
+  if (!isFileDrag(event.dataTransfer)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  updateFileDropTarget(event.target);
+});
+document.addEventListener('drop', (event) => {
+  if (!isFileDrag(event.dataTransfer)) return;
+  event.preventDefault();
+  const element = event.target instanceof Element ? event.target : null;
+  const sidebarPlaylistId = element?.closest('#playlistNav [data-playlist-id]')?.dataset.playlistId || null;
+  const pagePlaylistId = element?.closest('.main-content') && state.view === 'playlist' ? activePlaylist()?.id : null;
+  const playlistId = sidebarPlaylistId || pagePlaylistId || null;
+  const libraryTarget = Boolean(element?.closest('.main-content, [data-view="library"]'));
+  const paths = droppedFilePaths(event.dataTransfer);
+  clearFileDropTarget();
+  if (!playlistId && !libraryTarget) return showToast('请将音乐拖到音乐库或左侧歌单');
+  importDroppedMusic(paths, playlistId).catch(() => showToast('导入音乐失败，请检查文件是否仍然存在'));
+});
+document.addEventListener('dragleave', (event) => {
+  if (event.relatedTarget === null) clearFileDropTarget();
+});
+window.addEventListener('blur', clearFileDropTarget);
 
 document.addEventListener('pointerdown', (event) => {
   if (document.body.classList.contains('queue-open') && !event.target.closest('#queuePanel') && !event.target.closest('#queueToggleBtn')) {
