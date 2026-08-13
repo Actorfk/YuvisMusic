@@ -30,11 +30,12 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .app-shell { height: 100vh; display: grid; grid-template-rows: var(--titlebar-height) 1fr 96px; background: #e9e8e5; }
 .titlebar { background: linear-gradient(90deg, #e7e6e3 0%, #ecebe8 48%, #f0efec 100%); display: flex; align-items: center; padding: 5px 12px 3px 14px; }
 .drag-region { -webkit-app-region: drag; flex: 1; align-self: stretch; display: flex; align-items: center; }
-.titlebar-tools { padding-right: 10px; -webkit-app-region: no-drag; }
-.equalizer-title-button { height: 28px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(35,30,30,.055); border-radius: 8px; color: #706d72; background: rgba(255,255,255,.34); font-size: 10px; transition: .17s; }
+.titlebar-tools { margin-left: 14px; -webkit-app-region: no-drag; }
+.equalizer-title-button { height: 28px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; color: #706d72; background: transparent; font-size: 10px; transition: .17s; }
 .equalizer-title-button svg { width: 15px; stroke-width: 1.6; }
 .equalizer-title-button:hover { color: var(--ink); background: rgba(255,255,255,.68); box-shadow: 0 4px 12px rgba(30,25,25,.05); }
-.equalizer-title-button.active { color: var(--red); border-color: rgba(var(--accent-rgb),.18); background: var(--red-soft); }
+.equalizer-title-button.active { color: var(--red); border-color: transparent; background: transparent; }
+.equalizer-title-button.active:hover { border-color: rgba(var(--accent-rgb),.16); background: var(--red-soft); }
 .brand-mini { height: 29px; padding: 0 4px; display: flex; gap: 9px; align-items: center; color: #555357; font-weight: 650; font-size: 12px; letter-spacing: .02em; }
 .brand-dot { width: 22px; height: 22px; position: relative; flex: none; border-radius: 7px; background: var(--ink); box-shadow: 0 4px 10px rgba(20,18,19,.16); transform: rotate(-4deg); }
 .brand-dot::before, .brand-dot::after { content: ""; position: absolute; top: 5px; width: 3px; border-radius: 4px; }
