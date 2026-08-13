@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';" />
+  <title>Yuvis音乐 · 桌面歌词</title>
+  <link rel="stylesheet" href="desktop-lyrics.css" />
+</head>
+<body>
+  <main class="lyrics-shell" aria-live="polite">
+    <div class="hover-toolbar">
+      <span class="drag-hint" id="dragHint">Yuvis音乐 · 拖动调整位置</span>
+      <div class="toolbar-actions">
+        <button id="lockLyricsBtn" aria-label="锁定桌面歌词" title="锁定桌面歌词"><span id="lockLyricsIcon">锁</span></button>
+        <button id="closeLyricsBtn" aria-label="关闭桌面歌词" title="关闭桌面歌词">×</button>
+      </div>
+    </div>
+    <div class="song-context"><strong id="songTitle">Yuvis音乐</strong><span id="songArtist">桌面歌词</span></div>
+    <p class="primary-line" id="primaryLine">播放音乐后将在这里显示歌词</p>
+    <p class="secondary-line" id="secondaryLine">支持双层歌词显示</p>
+  </main>
+  <script src="desktop-lyrics.js"></script>
+</body>
+</html>

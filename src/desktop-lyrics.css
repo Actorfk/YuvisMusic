@@ -1,0 +1,35 @@
+:root {
+  --primary-color: #ff3156;
+  --secondary-color: #ffffff;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+body { font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; user-select: none; }
+.lyrics-shell { height: 100%; padding: 31px 56px 20px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; -webkit-app-region: drag; }
+.lyrics-shell::before { content: ""; position: absolute; inset: 15px 18px 10px; border-radius: 22px; background: rgba(12, 12, 14, .06); border: 1px solid rgba(255,255,255,.05); opacity: 0; transition: opacity .18s; backdrop-filter: blur(16px); }
+.lyrics-shell::after { content: ""; position: absolute; z-index: 3; inset: 7px; border: 1px dashed rgba(255,49,86,.92); border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 0 0 1px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .16s; }
+.lyrics-shell:hover::before, .lyrics-shell.show-bounds::before { opacity: 1; }
+.lyrics-shell.show-bounds::after { opacity: 1; }
+.hover-toolbar { position: absolute; z-index: 2; top: 17px; right: 27px; left: 29px; height: 27px; display: flex; align-items: center; justify-content: flex-end; color: rgba(255,255,255,.72); opacity: 0; transition: opacity .18s; }
+.lyrics-shell:hover .hover-toolbar, .lyrics-shell.show-bounds .hover-toolbar { z-index: 4; opacity: 1; }
+.drag-hint { margin-right: auto; font-size: 11px; letter-spacing: .04em; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.toolbar-actions { display: flex; gap: 5px; -webkit-app-region: no-drag; }
+.hover-toolbar button { -webkit-app-region: no-drag; width: 27px; height: 27px; padding: 0; border: 0; border-radius: 8px; color: #fff; background: rgba(12,12,14,.48); font-size: 20px; line-height: 24px; cursor: pointer; }
+.hover-toolbar button:hover { background: #cf0a2c; }
+.hover-toolbar #lockLyricsBtn { font-size: 10px; font-weight: 700; }
+.hover-toolbar #lockLyricsBtn.active { color: #fff; background: #cf0a2c; }
+body[data-locked="true"] .lyrics-shell { -webkit-app-region: no-drag; }
+body[data-locked="true"] .lyrics-shell.show-bounds::after { border-style: solid; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 0 0 2px rgba(207,10,44,.25); }
+.song-context { position: relative; z-index: 1; display: flex; gap: 8px; align-items: center; max-width: 80%; margin-bottom: 3px; color: rgba(255,255,255,.72); font-size: 11px; letter-spacing: .04em; text-shadow: 0 2px 6px rgba(0,0,0,.9); opacity: 0; transform: translateY(3px); transition: opacity .18s, transform .18s; }
+.lyrics-shell:hover .song-context { opacity: 1; transform: translateY(0); }
+.song-context strong, .song-context span { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-context span::before { content: "·"; margin-right: 8px; }
+.primary-line, .secondary-line { position: relative; z-index: 1; max-width: 100%; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; font-weight: 750; letter-spacing: .015em; text-shadow: 0 2px 3px rgba(0,0,0,.95), 0 0 9px rgba(0,0,0,.8), 0 3px 18px rgba(0,0,0,.62); }
+.primary-line { color: var(--primary-color); font-size: clamp(25px, 3.1vw, 38px); line-height: 1.25; }
+.secondary-line { color: var(--secondary-color); margin-top: 4px; font-size: clamp(17px, 2.1vw, 25px); line-height: 1.2; opacity: .96; }
+.secondary-line[hidden] { display: none; }
+body[data-lyric-style="plain"] .lyrics-shell::before { background: transparent; border-color: transparent; backdrop-filter: none; }
+body[data-lyric-style="plain"] .primary-line, body[data-lyric-style="plain"] .secondary-line { background: transparent; text-shadow: none; -webkit-text-stroke: 0; }
+body[data-lyric-style="outline"] .primary-line, body[data-lyric-style="outline"] .secondary-line { -webkit-text-stroke: 1px rgba(0,0,0,.82); text-shadow: 0 1px 2px #000, 0 2px 5px rgba(0,0,0,.9); }
+body[data-lyric-style="soft"] .primary-line, body[data-lyric-style="soft"] .secondary-line { padding: 2px 20px 4px; border-radius: 14px; background: rgba(12,12,14,.28); backdrop-filter: blur(8px); text-shadow: 0 2px 12px rgba(0,0,0,.8); }
