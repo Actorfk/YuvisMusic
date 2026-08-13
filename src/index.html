@@ -239,6 +239,7 @@
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
           <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
           <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
+          <button data-settings-section="aiDocs"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h7M9 16h7"/></svg><span>AI 对接文档</span><em>25</em></button>
           <button data-settings-section="shortcuts"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h7"/></svg><span>快捷键</span></button>
           <button data-settings-section="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>关于</span></button>
         </nav>
@@ -314,6 +315,25 @@
           <div class="yuvis-config-status"><span id="assistantKeyStatus">尚未保存 API Key</span><button id="clearAssistantKeyBtn" type="button" hidden>清除密钥</button></div>
           <button class="yuvis-config-save" id="saveAssistantConfigBtn" type="button">保存 Yuvis 配置</button>
           <div class="settings-save-note"><i></i><span>API Key 只由主进程读取；Windows 支持时会使用系统加密保护，不会回显到页面。</span></div>
+        </div>
+        <div class="settings-panel ai-docs-panel" data-settings-panel="aiDocs" hidden>
+          <div class="ai-docs-hero">
+            <span class="ai-docs-mark">AI</span>
+            <div><strong>Yuvis 软件工具协议</strong><p>模型通过 OpenAI Chat Completions 的 tools / tool_calls 机制操作当前播放器。</p></div>
+            <em id="aiToolCount">25 个接口</em>
+          </div>
+          <div class="ai-docs-flow" aria-label="AI 对接流程">
+            <span><b>1</b>用户发出指令</span><i>→</i><span><b>2</b>模型选择工具</span><i>→</i><span><b>3</b>软件执行并回传</span>
+          </div>
+          <section class="ai-docs-scope">
+            <h4>AI 可以操作的功能</h4>
+            <div class="ai-capability-grid" id="aiCapabilityGrid"></div>
+          </section>
+          <section class="ai-docs-reference">
+            <div class="ai-docs-section-title"><div><h4>接口参考</h4><p>必填参数标有 *；点击接口可查看参数约束。</p></div><span>实时同步当前版本</span></div>
+            <div class="ai-tool-list" id="aiToolList"></div>
+          </section>
+          <div class="ai-docs-note"><strong>安全边界</strong><span>这些接口只读写当前 Yuvis 音乐播放器的本地状态，不提供任意文件、命令或系统控制能力。</span></div>
         </div>
         <div class="settings-panel shortcuts-panel" data-settings-panel="shortcuts" hidden>
           <div class="shortcut-row"><span>播放 / 暂停</span><kbd>Space</kbd></div>

@@ -42,6 +42,14 @@ const ASSISTANT_TOOLS = [
   { type: 'function', function: { name: 'set_desktop_lyrics', description: '开启或关闭桌面歌词', parameters: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false } } }
 ];
 
+const AI_TOOL_GROUPS = [
+  { name: '播放控制', summary: '播放、切歌、进度与播放模式', tools: ['get_player_state', 'control_playback', 'next_track', 'previous_track', 'play_track', 'set_volume', 'seek_to', 'set_repeat', 'set_shuffle'] },
+  { name: '音乐库与内容', summary: '搜索歌曲、读取收藏、记录、概况和歌词', tools: ['search_library', 'get_favorite_tracks', 'get_recent_tracks', 'get_library_summary', 'get_current_lyrics'] },
+  { name: '播放队列', summary: '查看、添加、移出或清空队列', tools: ['get_queue', 'add_to_queue', 'remove_from_queue', 'clear_queue'] },
+  { name: '收藏与歌单', summary: '管理当前收藏，读取、创建和播放歌单', tools: ['set_current_favorite', 'get_playlists', 'create_playlist', 'play_playlist', 'add_current_to_playlist'] },
+  { name: '统计与桌面歌词', summary: '读取听歌统计并控制桌面歌词', tools: ['get_listening_statistics', 'set_desktop_lyrics'] }
+];
+
 function readStorage(key, fallback) {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -495,6 +503,7 @@ function showSettingsSection(section) {
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型'],
+    aiDocs: ['AI 对接文档', '查看模型可以操作的软件功能与工具接口'],
     shortcuts: ['快捷键', '查看现有快捷键并预留自定义入口'],
     about: ['关于 Yuvis音乐', '本地、纯粹、专注于你的音乐']
   };
@@ -514,6 +523,7 @@ function openSettings(section = 'playback') {
   renderDesktopLyricsSettings();
   renderAppearanceSettings();
   renderAssistantConfig();
+  renderAIDocumentation();
   showSettingsSection(section);
   openModal($('#settingsModal'));
 }
@@ -1090,6 +1100,52 @@ function renderAssistantConfig() {
     ? (config.apiKeyProtected ? 'API Key 已使用系统加密保存' : 'API Key 已保存在本机')
     : '尚未保存 API Key（本地模型可不填）';
   $('#clearAssistantKeyBtn').hidden = !config.hasApiKey;
+}
+
+function assistantParameterType(schema = {}) {
+  if (Array.isArray(schema.enum)) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
+  const range = Number.isFinite(schema.minimum) || Number.isFinite(schema.maximum)
+    ? ` ${Number.isFinite(schema.minimum) ? `≥ ${schema.minimum}` : ''}${Number.isFinite(schema.minimum) && Number.isFinite(schema.maximum) ? '，' : ''}${Number.isFinite(schema.maximum) ? `≤ ${schema.maximum}` : ''}`
+    : '';
+  const length = Number.isFinite(schema.minLength) || Number.isFinite(schema.maxLength)
+    ? ` ${Number.isFinite(schema.minLength) ? `长度 ≥ ${schema.minLength}` : ''}${Number.isFinite(schema.minLength) && Number.isFinite(schema.maxLength) ? '，' : ''}${Number.isFinite(schema.maxLength) ? `长度 ≤ ${schema.maxLength}` : ''}`
+    : '';
+  return `${schema.type || 'any'}${range}${length}`;
+}
+
+function renderAIDocumentation() {
+  const list = $('#aiToolList');
+  if (!list) return;
+  $('#aiToolCount').textContent = `${ASSISTANT_TOOLS.length} 个接口`;
+  $('#aiCapabilityGrid').innerHTML = AI_TOOL_GROUPS.map((group) => `
+    <article class="ai-capability-card">
+      <strong>${escapeHtml(group.name)} · ${group.tools.length}</strong>
+      <span>${escapeHtml(group.summary)}</span>
+    </article>`).join('');
+
+  const toolsByName = new Map(ASSISTANT_TOOLS.map((tool) => [tool.function.name, tool.function]));
+  const documented = new Set(AI_TOOL_GROUPS.flatMap((group) => group.tools));
+  const groups = [...AI_TOOL_GROUPS];
+  const uncategorized = ASSISTANT_TOOLS.map((tool) => tool.function.name).filter((name) => !documented.has(name));
+  if (uncategorized.length) groups.push({ name: '其他接口', summary: '', tools: uncategorized });
+
+  list.innerHTML = groups.map((group) => {
+    const entries = group.tools.map((name) => toolsByName.get(name)).filter(Boolean).map((tool) => {
+      const properties = tool.parameters?.properties || {};
+      const required = new Set(tool.parameters?.required || []);
+      const signature = Object.entries(properties)
+        .map(([parameter, schema]) => `${parameter}${required.has(parameter) ? '*' : '?'}: ${schema.type || 'any'}`)
+        .join(', ');
+      const parameterRows = Object.entries(properties).length
+        ? Object.entries(properties).map(([parameter, schema]) => `<p><code>${escapeHtml(parameter)}</code>${required.has(parameter) ? '<b> *</b>' : ''} — <code>${escapeHtml(assistantParameterType(schema))}</code></p>`).join('')
+        : '<p>无需参数，调用时传入空对象 <code>{}</code>。</p>';
+      return `<details class="ai-tool-item">
+        <summary><code>${escapeHtml(tool.name)}(${escapeHtml(signature)})</code><span>${escapeHtml(tool.description)}</span></summary>
+        <div class="ai-tool-parameters">${parameterRows}</div>
+      </details>`;
+    }).join('');
+    return `<div class="ai-tool-group"><h5 class="ai-tool-group-title">${escapeHtml(group.name)} · ${group.tools.length}</h5>${entries}</div>`;
+  }).join('');
 }
 
 function renderAssistant() {
