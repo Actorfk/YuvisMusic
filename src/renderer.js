@@ -59,6 +59,7 @@ const AI_TOOL_GROUPS = [
 ];
 
 const EQUALIZER_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+const FULLSCREEN_LYRIC_STYLES = ['original', 'immersive', 'minimal', 'aurora', 'cinema', 'sunset', 'glass'];
 const BUILTIN_EQUALIZER_PRESETS = {
   flat: { name: '默认 · 平直', gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
   bass: { name: '低音增强', gains: [6, 5, 4, 2, 0, -1, -1, 0, 1, 2] },
@@ -168,7 +169,7 @@ const state = {
     secondaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.secondaryColor) ? savedDesktopLyricsSettings.secondaryColor : '#ffffff'
   },
   fullscreenLyricsSettings: {
-    style: ['immersive', 'minimal', 'aurora'].includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
+    style: FULLSCREEN_LYRIC_STYLES.includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
     fontSize: ['compact', 'standard', 'large'].includes(savedFullscreenLyricsSettings.fontSize) ? savedFullscreenLyricsSettings.fontSize : 'standard'
   },
   appearanceSettings: {
@@ -2190,7 +2191,7 @@ $('#fontSizeOptions').addEventListener('click', (event) => {
 });
 $('#fullscreenLyricsStyleOptions').addEventListener('click', (event) => {
   const button = event.target.closest('[data-fullscreen-lyric-style]');
-  if (!button || !['immersive', 'minimal', 'aurora'].includes(button.dataset.fullscreenLyricStyle)) return;
+  if (!button || !FULLSCREEN_LYRIC_STYLES.includes(button.dataset.fullscreenLyricStyle)) return;
   state.fullscreenLyricsSettings.style = button.dataset.fullscreenLyricStyle;
   applyFullscreenLyricsSettings();
   showToast(`全屏歌词已切换为「${button.querySelector('strong').textContent}」`);
