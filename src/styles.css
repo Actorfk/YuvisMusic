@@ -177,10 +177,14 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .track-row { min-height: 62px; display: grid; grid-template-columns: 35px minmax(190px, 1.5fr) minmax(100px, .8fr) 90px 48px 68px; align-items: center; column-gap: 12px; border-bottom: 1px solid rgba(231,229,226,.72); padding: 4px 7px; border-radius: 10px; transition: .17s; }
 .track-row:not(.table-head):hover { background: #fff; box-shadow: 0 5px 18px rgba(25,20,20,.04); }
 .track-row.current { background: var(--red-soft); }
+.track-row.playback-failed { background: linear-gradient(90deg, rgba(224,79,61,.105), rgba(255,255,255,.28) 58%, rgba(224,79,61,.045)); box-shadow: inset 3px 0 0 #df523f; }
+.track-row.playback-failed:hover, .track-row.playback-failed.current { background: linear-gradient(90deg, rgba(224,79,61,.16), rgba(255,255,255,.72) 62%, rgba(224,79,61,.07)); box-shadow: inset 3px 0 0 #df523f, 0 7px 20px rgba(149,48,36,.08); }
 .table-head { min-height: 37px; color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; border-radius: 0; }
 .table-head svg { width: 14px; }
 .track-index { text-align: center; color: #999; font-size: 12px; }
 .track-row.current .track-index { color: var(--red); font-weight: 700; }
+.failed-track-indicator { width: 22px; height: 22px; display: inline-grid; place-items: center; color: #d94735; filter: drop-shadow(0 3px 5px rgba(168,49,35,.2)); animation: failedTrackPulse 1.55s ease-in-out infinite; }
+.failed-track-indicator svg { width: 19px; stroke-width: 2.1; }
 .playing-indicator { width: 18px; height: 15px; display: inline-flex; align-items: flex-end; justify-content: center; gap: 2px; }
 .playing-indicator i { width: 2px; height: 5px; border-radius: 2px; background: currentColor; transform-origin: center bottom; }
 .playing-indicator i:nth-child(2) { height: 11px; }
@@ -190,11 +194,13 @@ body.is-playing .track-row.current .playing-indicator i:nth-child(2) { animation
 body.is-playing .track-row.current .playing-indicator i:nth-child(3) { animation-delay: -.24s; }
 .track-main { min-width: 0; }
 .track-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.track-cover, .queue-cover { flex: none; width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(145deg, #2e2d31, #121214); color: rgba(255,255,255,.8); display: grid; place-items: center; background-size: cover; background-position: center; overflow: hidden; }
+.track-cover, .queue-cover { position: relative; flex: none; width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(145deg, #2e2d31, #121214); color: rgba(255,255,255,.8); display: grid; place-items: center; background-size: cover; background-position: center; overflow: hidden; }
+.playback-failed .track-cover::after, .playback-failed .queue-cover::after { content: "!"; position: absolute; right: 3px; top: 3px; width: 15px; height: 15px; display: grid; place-items: center; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; color: #fff; background: #df523f; box-shadow: 0 3px 8px rgba(91,27,20,.28); font-size: 9px; font-weight: 900; line-height: 1; }
 .track-cover svg { width: 18px; }
 .track-text { min-width: 0; }
 .track-text strong, .queue-text strong { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; }
 .track-text span, .queue-text span { color: #888; display: block; margin-top: 3px; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.track-failure-badge { display: inline-flex; align-items: center; height: 16px; margin-left: 7px; padding: 0 6px; border: 1px solid rgba(218,67,49,.2); border-radius: 999px; color: #c53f30; background: rgba(255,244,241,.92); font-size: 9px; font-style: normal; font-weight: 750; letter-spacing: .02em; vertical-align: 1px; }
 .track-album, .track-date, .track-time { color: #77757a; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .favorite-track { width: 30px; height: 30px; color: #b7b5b4; display: grid; place-items: center; opacity: 0; transition: .15s; }
 .track-row:hover .favorite-track, .favorite-track.active { opacity: 1; }
@@ -327,6 +333,8 @@ body.queue-open .queue-panel { opacity: 1; pointer-events: auto; transform: tran
 .queue-item { height: 60px; padding: 7px 8px; display: grid; grid-template-columns: 38px minmax(0,1fr) 28px; gap: 10px; align-items: center; border-radius: 10px; transition: .17s; }
 .queue-item:hover, .queue-item.current { background: #fff; }
 .queue-item.current .queue-text strong { color: var(--red); }
+.queue-item.playback-failed { background: linear-gradient(90deg, rgba(224,79,61,.12), rgba(255,255,255,.7)); box-shadow: inset 3px 0 0 #df523f; }
+.queue-item.playback-failed .queue-text strong { color: #b73d30; }
 .queue-cover { width: 38px; height: 38px; border-radius: 8px; font-size: 13px; }
 .queue-text { min-width: 0; }
 .remove-queue { opacity: 0; color: #aaa; display: grid; place-items: center; }
@@ -338,6 +346,9 @@ body.queue-open .queue-panel { opacity: 1; pointer-events: auto; transform: tran
 .sound-wave i:nth-child(2), .sound-wave i:nth-child(4) { height: 18px; }
 .sound-wave i:nth-child(3) { height: 26px; background: var(--red); }
 .player-bar { min-width: 0; background: rgba(255,255,255,.96); border-top: 1px solid var(--line); box-shadow: 0 -8px 32px rgba(25,20,20,.045); display: grid; grid-template-columns: minmax(240px, 1fr) minmax(400px, 1.5fr) minmax(240px, 1fr); column-gap: 20px; align-items: center; padding: 0 28px; z-index: 50; }
+body.has-playback-failure .player-bar { border-top-color: rgba(218,67,49,.32); box-shadow: 0 -10px 34px rgba(126,37,27,.08), inset 0 3px 0 rgba(223,82,63,.76); }
+body.has-playback-failure #playerTitle { color: #bd3f31; }
+body.has-playback-failure .detail-cover { box-shadow: 0 30px 60px rgba(127,38,28,.2), 0 0 0 4px rgba(223,82,63,.2); }
 .now-playing { display: flex; align-items: center; min-width: 0; gap: 12px; cursor: pointer; }
 .player-cover { width: 54px; height: 54px; border-radius: 10px; flex: none; background: #1a191c; color: #fff; display: grid; place-items: center; background-size: cover; background-position: center; box-shadow: 0 6px 18px rgba(0,0,0,.14); }
 .cover-note { font-size: 20px; color: var(--red-bright); }
@@ -654,6 +665,7 @@ body.is-playing .play-button .pause-icon { display: block; }
 @keyframes modalFade { from { opacity: 0; } }
 @keyframes modalRise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes trackPlayingBar { from { height: 3px; opacity: .62; } to { height: 14px; opacity: 1; } }
+@keyframes failedTrackPulse { 0%, 100% { opacity: .72; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
 
 @media (max-width: 1220px) {
   :root { --sidebar-width: 210px; }

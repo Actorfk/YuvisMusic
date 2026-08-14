@@ -184,6 +184,7 @@ const state = {
   activePlaylistId: null,
   pendingTrackId: null,
   playbackFailureTrackId: null,
+  failedTracks: new Map(),
   historyConfirmedTrackId: null,
   view: 'library',
   search: '',
@@ -1017,6 +1018,19 @@ function playbackFailureDetails(error, pathStatus) {
   };
 }
 
+function playbackFailureLabel(failure) {
+  const labels = {
+    'LOCAL FILE MISSING': '路径失效',
+    'FILE ACCESS DENIED': '无权读取',
+    'UNSUPPORTED AUDIO': '格式不支持',
+    'DECODING FAILED': '解码失败',
+    'FILE READ FAILED': '读取失败',
+    'PLAYBACK BLOCKED': '播放受阻',
+    'PLAYBACK ABORTED': '播放中止'
+  };
+  return labels[failure?.category] || '播放失败';
+}
+
 async function showPlaybackFailure(track, error) {
   if (!track || track.id !== state.currentId) return;
   if (state.playbackFailureTrackId === track.id) return;
@@ -1029,9 +1043,13 @@ async function showPlaybackFailure(track, error) {
   }
   if (state.playbackFailureTrackId !== track.id || state.currentId !== track.id) return;
   const failure = playbackFailureDetails(error, pathStatus);
+  state.failedTracks.set(track.id, failure);
+  document.body.classList.add('has-playback-failure');
   $('#playbackErrorTrack').textContent = track.title;
   $('#playbackErrorCategory').textContent = failure.category;
   $('#playbackErrorReason').textContent = failure.reason;
+  renderLibrary();
+  renderQueue();
   closeModals();
   openModal($('#playbackErrorModal'));
 }
@@ -1146,14 +1164,19 @@ function renderLibrary() {
     emptyText.textContent = state.library.length ? '换一个关键词试试看' : '拖入本地音乐文件，或点击按钮开始导入';
     emptyButton.textContent = state.library.length ? '清除搜索' : '选择音乐文件';
   }
-  list.innerHTML = tracks.map((track, index) => `
-    <div class="track-row ${track.id === state.currentId ? 'current' : ''}" data-track-id="${escapeHtml(track.id)}">
-      <span class="track-index">${track.id === state.currentId
-        ? `<span class="playing-indicator" role="img" aria-label="${audio.paused ? '已暂停' : '正在播放'}"><i></i><i></i><i></i></span>`
-        : String(index + 1).padStart(2, '0')}</span>
+  list.innerHTML = tracks.map((track, index) => {
+    const failure = state.failedTracks.get(track.id);
+    const failureLabel = playbackFailureLabel(failure);
+    return `
+    <div class="track-row ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-track-id="${escapeHtml(track.id)}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
+      <span class="track-index">${failure
+        ? '<span class="failed-track-indicator" role="img" aria-label="播放异常"><svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>'
+        : track.id === state.currentId
+          ? `<span class="playing-indicator" role="img" aria-label="${audio.paused ? '已暂停' : '正在播放'}"><i></i><i></i><i></i></span>`
+          : String(index + 1).padStart(2, '0')}</span>
       <span class="track-main"><span class="track-identity">
         <span class="track-cover" ${coverStyle(track)}>${track.cover ? '' : '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v11"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="15" r="3"/></svg>'}</span>
-        <span class="track-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}</span></span>
+        <span class="track-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${failureLabel}</em>` : ''}</span></span>
       </span></span>
       <span class="track-album">${escapeHtml(track.album)}</span>
       <span class="track-date">${new Date(track.modifiedAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
@@ -1162,7 +1185,8 @@ function renderLibrary() {
         <button class="add-playlist-track" data-add-playlist-id="${escapeHtml(track.id)}" aria-label="添加到歌单"><svg viewBox="0 0 24 24"><path d="M4 6h10M4 11h10M4 16h7M18 13v7M14.5 16.5h7"/></svg></button>
         <button class="favorite-track ${state.favorites.has(track.id) ? 'active' : ''}" data-favorite-id="${escapeHtml(track.id)}" aria-label="喜欢"><svg viewBox="0 0 24 24"><path d="M20.8 5.8a5.5 5.5 0 0 0-7.8 0L12 6.9l-1.1-1.1a5.5 5.5 0 0 0-7.7 7.8L12 22l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z" /></svg></button>
       </span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   applyCoverImages(list);
 }
 
@@ -1172,17 +1196,21 @@ function renderQueue() {
     list.innerHTML = '<div class="queue-empty"><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div><span>队列中暂无歌曲</span></div>';
     return;
   }
-  list.innerHTML = state.queue.map((track) => `
-    <div class="queue-item ${track.id === state.currentId ? 'current' : ''}" data-queue-id="${escapeHtml(track.id)}">
+  list.innerHTML = state.queue.map((track) => {
+    const failure = state.failedTracks.get(track.id);
+    return `
+    <div class="queue-item ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-queue-id="${escapeHtml(track.id)}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
       <span class="queue-cover" ${coverStyle(track)}>${track.cover ? '' : '♪'}</span>
-      <span class="queue-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}</span></span>
+      <span class="queue-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${playbackFailureLabel(failure)}</em>` : ''}</span></span>
       <button class="remove-queue" data-remove-id="${escapeHtml(track.id)}" aria-label="移出队列"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   applyCoverImages(list);
 }
 
 function renderNowPlaying() {
   const track = currentTrack();
+  document.body.classList.toggle('has-playback-failure', Boolean(track && state.failedTracks.has(track.id)));
   $('#detailTitle').textContent = track?.title || '尚未播放';
   $('#detailArtist').textContent = track?.artist || '选择一首本地音乐，开始聆听';
   $('#detailAlbum').textContent = track ? `${track.album}${track.year ? ` · ${track.year}` : ''}` : 'Yuvis音乐 · 本地播放器';
@@ -2422,6 +2450,15 @@ $('#muteBtn').addEventListener('click', () => {
 audio.addEventListener('play', () => {
   document.body.classList.add('is-playing');
   const track = currentTrack();
+  if (track) {
+    const clearedFailure = state.failedTracks.delete(track.id);
+    state.playbackFailureTrackId = null;
+    document.body.classList.remove('has-playback-failure');
+    if (clearedFailure) {
+      renderQueue();
+      renderNowPlaying();
+    }
+  }
   if (track && state.historyConfirmedTrackId !== track.id) {
     addToHistory(track.id);
     state.historyConfirmedTrackId = track.id;

@@ -41,13 +41,16 @@ $safeMessage = ($Message -replace '[\\/:*?"<>|]', '-' -replace '\s+', '-').Trim(
 if (-not $safeMessage) { $safeMessage = 'checkpoint' }
 if ($safeMessage.Length -gt 48) { $safeMessage = $safeMessage.Substring(0, 48).TrimEnd('-') }
 
-Write-Host '[1/5] Checking source...'
+Write-Host '[1/6] Regenerating application icons...'
+Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'icon')
+
+Write-Host '[2/6] Checking source...'
 Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'check')
 
-Write-Host '[2/5] Building installer...'
+Write-Host '[3/6] Building installer...'
 Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'build')
 
-Write-Host '[3/5] Building portable executable...'
+Write-Host '[4/6] Building portable executable...'
 Invoke-Checked -FilePath $npxExecutable -Arguments @(
   'electron-builder',
   '--win',
@@ -63,7 +66,7 @@ foreach ($artifactPath in @($installerPath, $portablePath)) {
   }
 }
 
-Write-Host '[4/5] Committing source and creating checkpoint tag...'
+Write-Host '[5/6] Committing source and creating checkpoint tag...'
 if (-not (Test-Path -LiteralPath '.git')) {
   Invoke-Checked -FilePath $gitExecutable -Arguments @('init')
 }
@@ -91,7 +94,7 @@ if ($tagExists) {
 }
 Invoke-Checked -FilePath $gitExecutable -Arguments @('tag', '-a', $tag, '-m', $Message)
 
-Write-Host '[5/5] Archiving executable files...'
+Write-Host '[6/6] Archiving executable files...'
 $archiveRoot = Join-Path $projectRoot 'releases'
 $archiveDirectory = Join-Path $archiveRoot "$timestamp-$safeMessage"
 New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
