@@ -1074,6 +1074,7 @@ function renderStatistics() {
   const tracks = state.library;
   const totalDuration = tracks.reduce((sum, track) => sum + (Number(track.duration) || 0), 0);
   const totalBytes = tracks.reduce((sum, track) => sum + (Number(track.size) || 0), 0);
+  const storagePercent = Math.min(100, Math.max(2, totalBytes / (10 * 1024 ** 3) * 100));
   const favoriteCount = tracks.filter((track) => state.favorites.has(track.id)).length;
   const historyIds = new Set(state.history);
   const recentCount = tracks.filter((track) => historyIds.has(track.id)).length;
@@ -1097,7 +1098,7 @@ function renderStatistics() {
       <article class="stats-summary-card primary"><span>音乐总数</span><strong>${tracks.length}</strong><small>首本地歌曲</small></article>
       <article class="stats-summary-card"><span>乐库总时长</span><strong>${formatDuration(totalDuration)}</strong><small>完整播放一遍</small></article>
       <article class="stats-summary-card"><span>累计聆听</span><strong>${formatListeningDuration(totalListeningSeconds())}</strong><small>从播放第一秒开始累计</small></article>
-      <article class="stats-summary-card"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><small>本地音乐文件</small></article>
+      <article class="stats-summary-card storage"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><div class="stats-storage-track"><i style="width:${storagePercent}%"></i></div><small>本地音乐 · 仅保存在你的设备上</small></article>
     </div>
     <div class="listening-period-section">
       <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>时长实时累计 · 歌曲数需听满 1 分钟</small></div>
@@ -1138,9 +1139,6 @@ function renderStatistics() {
 }
 
 function updateStats() {
-  const bytes = state.library.reduce((sum, track) => sum + (track.size || 0), 0);
-  $('#storageSize').textContent = formatSize(bytes);
-  $('#storageProgress').style.width = `${Math.min(100, Math.max(2, bytes / (10 * 1024 ** 3) * 100))}%`;
   if (state.view === 'stats') renderStatistics();
 }
 
