@@ -137,6 +137,7 @@ function normalizeListeningStats(value) {
 
 const savedAppSettings = readObjectStorage('appSettings');
 const savedDesktopLyricsSettings = savedAppSettings.desktopLyrics || readObjectStorage('desktopLyricsSettings');
+const savedFullscreenLyricsSettings = savedAppSettings.fullscreenLyrics || {};
 const savedAppearanceSettings = savedAppSettings.appearance || {};
 const savedEqualizerSettings = savedAppSettings.equalizer || {};
 const savedEqualizerPresets = readStorage('equalizerPresets', []);
@@ -166,6 +167,10 @@ const state = {
     primaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.primaryColor) ? savedDesktopLyricsSettings.primaryColor : '#ff3156',
     secondaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.secondaryColor) ? savedDesktopLyricsSettings.secondaryColor : '#ffffff'
   },
+  fullscreenLyricsSettings: {
+    style: ['immersive', 'minimal', 'aurora'].includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
+    fontSize: ['compact', 'standard', 'large'].includes(savedFullscreenLyricsSettings.fontSize) ? savedFullscreenLyricsSettings.fontSize : 'standard'
+  },
   appearanceSettings: {
     theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson',
     fontSize: Object.hasOwn(FONT_SIZE_OPTIONS, savedAppearanceSettings.fontSize) ? savedAppearanceSettings.fontSize : 'standard'
@@ -180,6 +185,7 @@ const state = {
   assistantMessages: [],
   assistantBusy: false,
   playerOpen: false,
+  fullscreenLyrics: false,
   playerCloseTimer: null,
   activePlaylistId: null,
   pendingTrackId: null,
@@ -689,6 +695,7 @@ function persistAppSettings() {
     shuffle: state.shuffle,
     repeat: state.repeat,
     desktopLyrics: state.desktopLyricsSettings,
+    fullscreenLyrics: state.fullscreenLyricsSettings,
     equalizer: {
       enabled: state.equalizerSettings.enabled,
       gains: state.equalizerSettings.gains,
@@ -751,6 +758,55 @@ function applyAppearanceSettings({ persist = true } = {}) {
   applyFontSizeSetting();
   if (persist) persistAppSettings();
   renderAppearanceSettings();
+}
+
+function renderFullscreenLyricsSettings() {
+  const settings = state.fullscreenLyricsSettings;
+  $('#fullscreenLyricsStyleOptions').querySelectorAll('[data-fullscreen-lyric-style]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.fullscreenLyricStyle === settings.style);
+  });
+  $('#fullscreenLyricsFontOptions').querySelectorAll('[data-fullscreen-lyric-font]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.fullscreenLyricFont === settings.fontSize);
+  });
+}
+
+function applyFullscreenLyricsSettings({ persist = true } = {}) {
+  const settings = state.fullscreenLyricsSettings;
+  const scales = { compact: .88, standard: 1, large: 1.16 };
+  document.body.dataset.fullscreenLyricsStyle = settings.style;
+  document.body.style.setProperty('--fullscreen-lyric-scale', scales[settings.fontSize] || 1);
+  if (persist) persistAppSettings();
+  renderFullscreenLyricsSettings();
+  if (state.fullscreenLyrics) requestAnimationFrame(() => updateLyricPosition(audio.currentTime, true));
+}
+
+function syncFullscreenLyricsState(fullscreen) {
+  const active = Boolean(fullscreen && state.playerOpen);
+  state.fullscreenLyrics = active;
+  document.body.classList.toggle('fullscreen-lyrics', active);
+  const button = $('#fullscreenLyricsBtn');
+  button.classList.toggle('active', active);
+  button.setAttribute('aria-pressed', String(active));
+  button.setAttribute('aria-label', active ? '退出全屏歌词' : '进入全屏歌词');
+  button.title = active ? '退出全屏歌词（Esc）' : '全屏歌词';
+  button.querySelector('span').textContent = active ? '退出全屏' : '全屏歌词';
+  requestAnimationFrame(() => updateLyricPosition(audio.currentTime, true));
+}
+
+async function setFullscreenLyrics(fullscreen) {
+  if (fullscreen && !state.playerOpen) openNowPlayingPage();
+  try {
+    const actual = await window.desktop.setFullscreen(Boolean(fullscreen));
+    syncFullscreenLyricsState(actual);
+  } catch (error) {
+    console.warn('Unable to change fullscreen lyrics state:', error);
+    syncFullscreenLyricsState(false);
+    showToast('无法切换全屏歌词，请稍后重试');
+  }
+}
+
+function toggleFullscreenLyrics() {
+  setFullscreenLyrics(!state.fullscreenLyrics);
 }
 
 function desktopLyricsPayload(index = state.activeLyricIndex) {
@@ -836,6 +892,7 @@ function showSettingsSection(section) {
   const names = {
     playback: ['播放设置', '控制音量与默认播放行为'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
+    fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
   };
@@ -854,6 +911,7 @@ function openSettings(section = 'playback') {
   closeModals();
   renderPlaybackSettings();
   renderDesktopLyricsSettings();
+  renderFullscreenLyricsSettings();
   renderAppearanceSettings();
   renderAssistantConfig();
   showSettingsSection(section);
@@ -1772,6 +1830,7 @@ function openNowPlayingPage() {
 
 function closeNowPlayingPage() {
   if (!state.playerOpen && $('#nowPlayingPage').hidden) return;
+  if (state.fullscreenLyrics) setFullscreenLyrics(false);
   state.playerOpen = false;
   $('#nowPlayingPage').classList.remove('open');
   document.body.classList.remove('player-page-open');
@@ -2089,6 +2148,7 @@ $('#previousBtn').addEventListener('click', () => audio.currentTime > 3 ? audio.
 $('#nextBtn').addEventListener('click', () => nextTrack(1));
 $('#playerFavoriteBtn').addEventListener('click', (event) => { event.stopPropagation(); toggleFavorite(state.currentId); });
 $('#chooseLyricsBtn').addEventListener('click', chooseLyricsForCurrentTrack);
+$('#fullscreenLyricsBtn').addEventListener('click', toggleFullscreenLyrics);
 $('#desktopLyricsBtn').addEventListener('click', toggleDesktopLyrics);
 $('#sidebarSettingsBtn').addEventListener('click', () => openSettings('playback'));
 $('.settings-sidebar nav').addEventListener('click', (event) => {
@@ -2127,6 +2187,20 @@ $('#fontSizeOptions').addEventListener('click', (event) => {
   state.appearanceSettings.fontSize = button.dataset.fontSize;
   applyAppearanceSettings();
   showToast(`字体大小已切换为「${button.querySelector('span').textContent}」`);
+});
+$('#fullscreenLyricsStyleOptions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-fullscreen-lyric-style]');
+  if (!button || !['immersive', 'minimal', 'aurora'].includes(button.dataset.fullscreenLyricStyle)) return;
+  state.fullscreenLyricsSettings.style = button.dataset.fullscreenLyricStyle;
+  applyFullscreenLyricsSettings();
+  showToast(`全屏歌词已切换为「${button.querySelector('strong').textContent}」`);
+});
+$('#fullscreenLyricsFontOptions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-fullscreen-lyric-font]');
+  if (!button || !['compact', 'standard', 'large'].includes(button.dataset.fullscreenLyricFont)) return;
+  state.fullscreenLyricsSettings.fontSize = button.dataset.fullscreenLyricFont;
+  applyFullscreenLyricsSettings();
+  showToast(`全屏歌词字号已切换为「${button.textContent}」`);
 });
 $('#equalizerBtn').addEventListener('click', openEqualizer);
 $('#aiDocsTitleBtn').addEventListener('click', () => {
@@ -2424,6 +2498,7 @@ document.addEventListener('keydown', (event) => {
     if (openModalElement?.id === 'playbackErrorModal') closePlaybackFailure();
     else if (openModalElement) closeModals();
     else if (document.body.classList.contains('queue-open')) closeQueueMenu();
+    else if (state.fullscreenLyrics) setFullscreenLyrics(false);
     else if (state.playerOpen) closeNowPlayingPage();
   }
   if (event.ctrlKey && event.key.toLowerCase() === 'k') { event.preventDefault(); $('#searchInput').focus(); }
@@ -2500,6 +2575,7 @@ window.desktop.onMaximized((maximized) => {
   $('#maximizeBtn').setAttribute('aria-label', maximized ? '还原窗口' : '最大化');
   $('#maximizeBtn').title = maximized ? '还原窗口' : '最大化';
 });
+window.desktop.onFullscreen((fullscreen) => syncFullscreenLyricsState(fullscreen));
 window.desktop.onDesktopLyricsVisibility((visible) => {
   if (state.desktopLyricsSettings.enabled === visible) return;
   state.desktopLyricsSettings.enabled = visible;
@@ -2522,6 +2598,7 @@ window.desktop.onDesktopLyricsSettings((settings) => {
 
 async function init() {
   applyAppearanceSettings({ persist: false });
+  applyFullscreenLyricsSettings({ persist: false });
   applyPlaybackSettings();
   applyEqualizerSettings({ persist: false });
   applyDesktopLyricsSettings();

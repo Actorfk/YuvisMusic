@@ -150,6 +150,8 @@ function createWindow() {
   mainWindow.webContents.once('did-finish-load', showMainWindow);
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false));
+  mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('window:fullscreen', true));
+  mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('window:fullscreen', false));
   mainWindow.on('closed', () => {
     mainWindow = null;
     if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) desktopLyricsWindow.destroy();
@@ -554,6 +556,11 @@ ipcMain.on('window:minimize', () => mainWindow?.minimize());
 ipcMain.on('window:toggle-maximize', () => {
   if (!mainWindow) return;
   mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+});
+ipcMain.handle('window:set-fullscreen', (event, fullscreen) => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return false;
+  mainWindow.setFullScreen(Boolean(fullscreen));
+  return mainWindow.isFullScreen();
 });
 ipcMain.on('window:close', () => mainWindow?.close());
 

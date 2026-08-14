@@ -110,6 +110,11 @@
         <section class="now-playing-page" id="nowPlayingPage" aria-label="歌词播放页" hidden>
           <div class="now-playing-sheet">
             <button class="player-page-close" id="closeNowPlayingBtn" aria-label="收起播放页"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button class="player-page-fullscreen" id="fullscreenLyricsBtn" aria-label="进入全屏歌词" aria-pressed="false" title="全屏歌词">
+              <svg class="fullscreen-enter-icon" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/></svg>
+              <svg class="fullscreen-exit-icon" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"/></svg>
+              <span>全屏歌词</span>
+            </button>
             <div class="detail-kicker"><i></i> NOW PLAYING</div>
             <div class="detail-art-stage">
               <div class="detail-halo"></div>
@@ -346,6 +351,7 @@
         <nav aria-label="设置分类">
           <button class="active" data-settings-section="playback"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z"/></svg><span>播放</span></button>
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
+          <button data-settings-section="fullscreenLyrics"><svg viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/><path d="M8 12h8M8 16h6"/></svg><span>全屏歌词</span></button>
           <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
           <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
         </nav>
@@ -399,6 +405,33 @@
               <button data-color="#ff3156" aria-label="一点红"></button><button data-color="#ffb300" aria-label="琥珀黄"></button><button data-color="#4cc9f0" aria-label="天空蓝"></button><button data-color="#8bffb0" aria-label="薄荷绿"></button><button data-color="#ffffff" aria-label="纯白"></button>
             </div>
           </div>
+        </div>
+
+        <div class="settings-panel fullscreen-lyrics-panel" data-settings-panel="fullscreenLyrics" hidden>
+          <div class="settings-section-title"><span>全屏布局</span><small>进入全屏歌词时立即应用</small></div>
+          <div class="fullscreen-style-options" id="fullscreenLyricsStyleOptions">
+            <button data-fullscreen-lyric-style="immersive">
+              <i class="fullscreen-style-preview immersive"><b></b><span></span><em></em></i>
+              <strong>沉浸唱片</strong><small>唱片与歌词并列</small>
+            </button>
+            <button data-fullscreen-lyric-style="minimal">
+              <i class="fullscreen-style-preview minimal"><span></span><em></em><b></b></i>
+              <strong>极简居中</strong><small>隐藏封面，专注歌词</small>
+            </button>
+            <button data-fullscreen-lyric-style="aurora">
+              <i class="fullscreen-style-preview aurora"><b></b><span></span><em></em></i>
+              <strong>极光柔光</strong><small>蓝紫渐变氛围</small>
+            </button>
+          </div>
+          <div class="setting-block fullscreen-font-block">
+            <span class="setting-label">歌词字号</span>
+            <div class="fullscreen-font-options" id="fullscreenLyricsFontOptions">
+              <button data-fullscreen-lyric-font="compact">紧凑</button>
+              <button data-fullscreen-lyric-font="standard">标准</button>
+              <button data-fullscreen-lyric-font="large">大字</button>
+            </div>
+          </div>
+          <div class="settings-save-note"><i></i><span>全屏歌词样式只影响应用内全屏页面，不会改变桌面悬浮歌词。</span></div>
         </div>
 
         <div class="settings-panel appearance-panel" data-settings-panel="appearance" hidden>
