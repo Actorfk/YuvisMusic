@@ -1009,7 +1009,9 @@ function renderLibrary() {
   }
   list.innerHTML = tracks.map((track, index) => `
     <div class="track-row ${track.id === state.currentId ? 'current' : ''}" data-track-id="${escapeHtml(track.id)}">
-      <span class="track-index">${track.id === state.currentId && !audio.paused ? '▮▮' : String(index + 1).padStart(2, '0')}</span>
+      <span class="track-index">${track.id === state.currentId
+        ? `<span class="playing-indicator" role="img" aria-label="${audio.paused ? '已暂停' : '正在播放'}"><i></i><i></i><i></i></span>`
+        : String(index + 1).padStart(2, '0')}</span>
       <span class="track-main"><span class="track-identity">
         <span class="track-cover" ${coverStyle(track)}>${track.cover ? '' : '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v11"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="15" r="3"/></svg>'}</span>
         <span class="track-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}</span></span>
