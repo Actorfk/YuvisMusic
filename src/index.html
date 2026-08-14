@@ -312,6 +312,25 @@
     </article>
   </div>
 
+  <div class="modal-backdrop" id="playbackErrorModal" hidden>
+    <article class="modal-card delete-confirm-card playback-error-card" role="alertdialog" aria-modal="true" aria-labelledby="playbackErrorTitle" aria-describedby="playbackErrorDescription">
+      <div class="delete-confirm-icon playback-error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <span class="delete-confirm-kicker">PLAYBACK ERROR</span>
+      <h3 id="playbackErrorTitle">无法播放这首歌曲</h3>
+      <p id="playbackErrorDescription">歌曲「<strong id="playbackErrorTrack"></strong>」播放失败。</p>
+      <div class="delete-confirm-note playback-error-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <span><strong id="playbackErrorReason">暂时无法读取音频文件</strong><small>可以保留歌曲稍后重试，或将它从播放列表和所有歌单中移出；本地文件不会被删除。</small></span>
+      </div>
+      <div class="modal-actions delete-confirm-actions">
+        <button id="keepFailedTrackBtn" type="button">保留歌曲</button>
+        <button class="modal-danger" id="removeFailedTrackBtn" type="button"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>移出列表与歌单</button>
+      </div>
+    </article>
+  </div>
+
   <div class="modal-backdrop" id="addToPlaylistModal" hidden>
     <div class="modal-card playlist-picker-card">
       <div class="modal-title-row"><div><h3>添加到歌单</h3><p id="addTrackHint">选择一个歌单</p></div><button class="modal-close" data-close-modal aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>

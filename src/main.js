@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const AUDIO_EXTENSIONS = new Set([
   '.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'
 ]);
+const METADATA_CONCURRENCY = 6;
 
 let mainWindow;
 let desktopLyricsWindow;
@@ -224,18 +225,23 @@ function setDesktopLyricsVisible(visible) {
   }
 }
 
-async function walkDirectory(directory) {
-  const found = [];
-  const entries = await fs.readdir(directory, { withFileTypes: true });
+async function walkDirectory(directory, result = { files: [], skipped: [] }) {
+  let entries;
+  try {
+    entries = await fs.readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    result.skipped.push({ path: directory, code: error.code || 'UNKNOWN' });
+    return result;
+  }
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      found.push(...await walkDirectory(fullPath));
+      await walkDirectory(fullPath, result);
     } else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-      found.push(fullPath);
+      result.files.push(fullPath);
     }
   }
-  return found;
+  return result;
 }
 
 function pictureToDataUrl(picture) {
@@ -306,6 +312,7 @@ async function getTrackInfo(filePath) {
     const { parseFile } = await import('music-metadata');
     metadata = await parseFile(normalizedPath, { duration: true, skipCovers: false });
   } catch (error) {
+    if (['EACCES', 'EPERM'].includes(error.code)) throw error;
     console.warn(`Unable to parse metadata: ${normalizedPath}`, error.message);
   }
 
@@ -339,8 +346,37 @@ async function loadTracks(paths) {
     if (!uniquePathMap.has(key)) uniquePathMap.set(key, normalizedPath);
   }
   const uniquePaths = [...uniquePathMap.values()];
-  const settled = await Promise.allSettled(uniquePaths.map(getTrackInfo));
-  return settled.filter((item) => item.status === 'fulfilled').map((item) => item.value);
+  const tracks = new Array(uniquePaths.length);
+  const permissionFailures = [];
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < uniquePaths.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      try {
+        tracks[index] = await getTrackInfo(uniquePaths[index]);
+      } catch (error) {
+        if (['EACCES', 'EPERM'].includes(error.code)) permissionFailures.push(uniquePaths[index]);
+        console.warn(`Unable to load track: ${uniquePaths[index]}`, error.message);
+      }
+    }
+  };
+  const workerCount = Math.min(METADATA_CONCURRENCY, uniquePaths.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  if (permissionFailures.length && mainWindow && !mainWindow.isDestroyed()) {
+    const preview = permissionFailures.slice(0, 6).map((filePath) => `• ${filePath}`).join('\n');
+    const remaining = permissionFailures.length > 6 ? `\n另有 ${permissionFailures.length - 6} 个文件未列出。` : '';
+    await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: '部分音乐文件无法访问',
+      message: `已跳过 ${permissionFailures.length} 个没有读取权限的文件`,
+      detail: `${preview}${remaining}\n\n请检查文件权限后重新导入。`,
+      buttons: ['知道了'],
+      defaultId: 0,
+      noLink: true
+    });
+  }
+  return tracks.filter(Boolean);
 }
 
 ipcMain.handle('library:choose-files', async () => {
@@ -363,8 +399,21 @@ ipcMain.handle('library:choose-folder', async () => {
     properties: ['openDirectory']
   });
   if (result.canceled) return [];
-  const files = await walkDirectory(result.filePaths[0]);
-  return loadTracks(files);
+  const scan = await walkDirectory(result.filePaths[0]);
+  if (scan.skipped.length) {
+    const preview = scan.skipped.slice(0, 6).map((item) => `• ${item.path}（${item.code}）`).join('\n');
+    const remaining = scan.skipped.length > 6 ? `\n另有 ${scan.skipped.length - 6} 个目录未列出。` : '';
+    await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: '部分目录无法访问',
+      message: `已跳过 ${scan.skipped.length} 个无法读取的目录`,
+      detail: `${preview}${remaining}\n\n可访问目录中的音乐仍会正常导入。`,
+      buttons: ['知道了'],
+      defaultId: 0,
+      noLink: true
+    });
+  }
+  return loadTracks(scan.files);
 });
 
 ipcMain.handle('library:restore', async (_event, paths) => {

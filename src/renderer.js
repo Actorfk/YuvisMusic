@@ -82,8 +82,61 @@ function readStorage(key, fallback) {
   }
 }
 
-const savedAppSettings = readStorage('appSettings', {});
-const savedDesktopLyricsSettings = savedAppSettings.desktopLyrics || readStorage('desktopLyricsSettings', {});
+function readArrayStorage(key) {
+  const value = readStorage(key, []);
+  return Array.isArray(value) ? value : [];
+}
+
+function readObjectStorage(key, fallback = {}) {
+  const value = readStorage(key, fallback);
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+}
+
+function normalizePlaylists(value) {
+  if (!Array.isArray(value)) return [];
+  const ids = new Set();
+  return value.filter((playlist) => playlist && typeof playlist === 'object').map((playlist, index) => {
+    const name = String(playlist.name || '').trim().slice(0, 30);
+    const fallbackId = `restored-playlist-${index}`;
+    let id = String(playlist.id || fallbackId).slice(0, 120);
+    if (ids.has(id)) id = `${fallbackId}-${id}`;
+    ids.add(id);
+    return {
+      id,
+      name,
+      trackPaths: Array.isArray(playlist.trackPaths) ? playlist.trackPaths.filter((item) => typeof item === 'string') : [],
+      createdAt: Number.isFinite(Number(playlist.createdAt)) ? Number(playlist.createdAt) : Date.now()
+    };
+  }).filter((playlist) => playlist.name);
+}
+
+function normalizeListeningStats(value) {
+  const stats = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const days = stats.days && typeof stats.days === 'object' && !Array.isArray(stats.days) ? stats.days : {};
+  return {
+    days: Object.fromEntries(Object.entries(days).flatMap(([dateKey, day]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !day || typeof day !== 'object' || Array.isArray(day)) return [];
+      const rawTracks = day.tracks && typeof day.tracks === 'object' && !Array.isArray(day.tracks) ? day.tracks : {};
+      const tracks = Object.fromEntries(Object.entries(rawTracks).flatMap(([trackKey, track]) => {
+        if (!track || typeof track !== 'object' || Array.isArray(track)) return [];
+        return [[trackKey, {
+          title: String(track.title || '未知歌曲').slice(0, 500),
+          seconds: Math.max(0, Number(track.seconds) || 0),
+          plays: Math.max(0, Number(track.plays) || 0),
+          valid: Boolean(track.valid)
+        }]];
+      }));
+      return [[dateKey, {
+        seconds: Math.max(0, Number(day.seconds) || 0),
+        plays: Math.max(0, Number(day.plays) || 0),
+        tracks
+      }]];
+    }))
+  };
+}
+
+const savedAppSettings = readObjectStorage('appSettings');
+const savedDesktopLyricsSettings = savedAppSettings.desktopLyrics || readObjectStorage('desktopLyricsSettings');
 const savedAppearanceSettings = savedAppSettings.appearance || {};
 const savedEqualizerSettings = savedAppSettings.equalizer || {};
 const savedEqualizerPresets = readStorage('equalizerPresets', []);
@@ -93,11 +146,11 @@ const state = {
   library: [],
   queue: [],
   currentId: null,
-  favorites: new Set(readStorage('favorites', [])),
-  history: readStorage('history', []),
-  playlists: readStorage('playlists', []),
-  lyricFiles: readStorage('lyricFiles', {}),
-  lyricOffsets: readStorage('lyricOffsets', {}),
+  favorites: new Set(readArrayStorage('favorites').filter((item) => typeof item === 'string')),
+  history: readArrayStorage('history').filter((item) => typeof item === 'string'),
+  playlists: normalizePlaylists(readStorage('playlists', [])),
+  lyricFiles: readObjectStorage('lyricFiles'),
+  lyricOffsets: readObjectStorage('lyricOffsets'),
   currentLyrics: null,
   activeLyricIndex: -1,
   lyricAnimationFrame: null,
@@ -130,6 +183,8 @@ const state = {
   playerCloseTimer: null,
   activePlaylistId: null,
   pendingTrackId: null,
+  playbackFailureTrackId: null,
+  historyConfirmedTrackId: null,
   view: 'library',
   search: '',
   sortAscending: true,
@@ -137,7 +192,7 @@ const state = {
   repeat: ['off', 'all', 'one'].includes(savedAppSettings.repeat) ? savedAppSettings.repeat : 'off',
   settingsSection: 'playback',
   listeningSeconds: Number(localStorage.getItem('listeningSeconds') || 0),
-  listeningStats: readStorage('listeningStats', { days: {} }),
+  listeningStats: normalizeListeningStats(readStorage('listeningStats', { days: {} })),
   listeningSession: null,
   listeningPersistTicks: 0
 };
@@ -297,7 +352,7 @@ function tickListeningStatistics() {
     session.valid = true;
     markListeningSessionValid();
   }
-  updateStats();
+  updateStats({ liveOnly: true });
 }
 
 function escapeHtml(value = '') {
@@ -837,7 +892,7 @@ function updateLyricPosition(seconds, forceCenter = false) {
   const adjustedSeconds = seconds - currentLyricOffset();
   let low = 0;
   let high = lyrics.lines.length - 1;
-  let activeIndex = 0;
+  let activeIndex = -1;
   while (low <= high) {
     const middle = Math.floor((low + high) / 2);
     if (lyrics.lines[middle].time <= adjustedSeconds + 0.001) {
@@ -923,6 +978,60 @@ function showToast(message) {
   toast.classList.add('show');
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function playbackFailureReason(error) {
+  const mediaErrorCode = Number(audio.error?.code || error?.code);
+  const mediaReasons = {
+    1: '播放请求被系统或用户中止',
+    2: '音频文件无法读取，可能已被移动、删除或暂时不可访问',
+    3: '音频数据已损坏，播放器无法完成解码',
+    4: '当前音频格式或编码方式不受支持'
+  };
+  if (mediaReasons[mediaErrorCode]) return mediaReasons[mediaErrorCode];
+  if (error?.name === 'NotAllowedError') return '系统阻止了播放请求，请再次点击播放后重试';
+  if (error?.name === 'NotSupportedError') return '当前音频格式或编码方式不受支持';
+  if (error?.name === 'AbortError') return '播放请求在音频加载完成前被中止';
+  const detail = String(error?.message || '').trim();
+  return detail ? `播放器返回错误：${detail.slice(0, 180)}` : '暂时无法读取或解码这个音频文件';
+}
+
+function showPlaybackFailure(track, error) {
+  if (!track || track.id !== state.currentId) return;
+  if (state.playbackFailureTrackId === track.id && !$('#playbackErrorModal').hidden) return;
+  state.playbackFailureTrackId = track.id;
+  $('#playbackErrorTrack').textContent = track.title;
+  $('#playbackErrorReason').textContent = playbackFailureReason(error);
+  closeModals();
+  openModal($('#playbackErrorModal'));
+}
+
+function closePlaybackFailure() {
+  $('#playbackErrorModal').hidden = true;
+  state.playbackFailureTrackId = null;
+}
+
+function removeFailedTrackFromLists() {
+  const track = state.library.find((item) => item.id === state.playbackFailureTrackId);
+  if (!track) return closePlaybackFailure();
+  const pathKey = trackPathKey(track.path);
+  const queueBefore = state.queue.length;
+  state.queue = state.queue.filter((item) => trackPathKey(item.path) !== pathKey);
+  let affectedPlaylists = 0;
+  state.playlists.forEach((playlist) => {
+    const before = playlist.trackPaths.length;
+    playlist.trackPaths = playlist.trackPaths.filter((trackPath) => trackPathKey(trackPath) !== pathKey);
+    if (playlist.trackPaths.length !== before) affectedPlaylists += 1;
+  });
+  if (affectedPlaylists) persistPlaylists();
+  closePlaybackFailure();
+  renderQueue();
+  renderPlaylistNav();
+  renderLibrary();
+  const removedFromQueue = queueBefore !== state.queue.length;
+  if (!removedFromQueue && !affectedPlaylists) return showToast('这首歌不在播放列表或歌单中');
+  const targets = [removedFromQueue ? '播放列表' : '', affectedPlaylists ? `${affectedPlaylists} 个歌单` : ''].filter(Boolean).join('和');
+  showToast(`已从${targets}移出，本地文件仍保留`);
 }
 
 function trackPathKey(trackPath) {
@@ -1093,27 +1202,27 @@ function renderStatistics() {
     ['近一周', 'week'],
     ['近一个月', 'month'],
     ['近一年', 'year']
-  ].map(([label, period]) => [label, aggregateListeningPeriod(period)]);
+  ].map(([label, key]) => [label, key, aggregateListeningPeriod(key)]);
 
   $('#statsSection').innerHTML = `
     <div class="stats-summary-grid">
       <article class="stats-summary-card primary"><span>音乐总数</span><strong>${tracks.length}</strong><small>首本地歌曲</small></article>
       <article class="stats-summary-card"><span>乐库总时长</span><strong>${formatDuration(totalDuration)}</strong><small>完整播放一遍</small></article>
-      <article class="stats-summary-card"><span>累计聆听</span><strong>${formatListeningDuration(totalListeningSeconds())}</strong><small>从播放第一秒开始累计</small></article>
+      <article class="stats-summary-card"><span>累计聆听</span><strong id="statsTotalListening">${formatListeningDuration(totalListeningSeconds())}</strong><small>从播放第一秒开始累计</small></article>
       <article class="stats-summary-card storage"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><div class="stats-storage-track"><i style="width:${storagePercent}%"></i></div><small>本地音乐 · 仅保存在你的设备上</small></article>
     </div>
     <div class="listening-period-section">
       <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>时长实时累计 · 歌曲数需听满 1 分钟</small></div>
       <div class="listening-period-grid">
-        ${listeningPeriods.map(([label, period]) => `
-          <article class="listening-period-card">
+        ${listeningPeriods.map(([label, key, period]) => `
+          <article class="listening-period-card" data-listening-period="${key}">
             <span>${label}</span>
-            <strong>${formatListeningDuration(period.seconds)}</strong>
-            <div><em>${period.trackCount} 首歌曲</em><i>${period.plays} 次有效播放</i></div>
+            <strong data-listening-duration>${formatListeningDuration(period.seconds)}</strong>
+            <div><em data-listening-tracks>${period.trackCount} 首歌曲</em><i data-listening-plays>${period.plays} 次有效播放</i></div>
             <section class="listening-period-top">
               <small>听得最多</small>
-              <b title="${escapeHtml(period.topTrack?.title || '暂无数据')}">${escapeHtml(period.topTrack?.title || '暂无数据')}</b>
-              <em>${period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放'}</em>
+              <b data-listening-top-title title="${escapeHtml(period.topTrack?.title || '暂无数据')}">${escapeHtml(period.topTrack?.title || '暂无数据')}</b>
+              <em data-listening-top-plays>${period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放'}</em>
             </section>
           </article>`).join('')}
       </div>
@@ -1140,8 +1249,28 @@ function renderStatistics() {
     </div>`;
 }
 
-function updateStats() {
-  if (state.view === 'stats') renderStatistics();
+function updateLiveStatistics() {
+  const total = $('#statsTotalListening');
+  if (!total) return renderStatistics();
+  total.textContent = formatListeningDuration(totalListeningSeconds());
+  ['day', 'week', 'month', 'year'].forEach((key) => {
+    const card = document.querySelector(`[data-listening-period="${key}"]`);
+    if (!card) return;
+    const period = aggregateListeningPeriod(key);
+    card.querySelector('[data-listening-duration]').textContent = formatListeningDuration(period.seconds);
+    card.querySelector('[data-listening-tracks]').textContent = `${period.trackCount} 首歌曲`;
+    card.querySelector('[data-listening-plays]').textContent = `${period.plays} 次有效播放`;
+    const topTitle = card.querySelector('[data-listening-top-title]');
+    topTitle.textContent = period.topTrack?.title || '暂无数据';
+    topTitle.title = period.topTrack?.title || '暂无数据';
+    card.querySelector('[data-listening-top-plays]').textContent = period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放';
+  });
+}
+
+function updateStats({ liveOnly = false } = {}) {
+  if (state.view !== 'stats') return;
+  if (liveOnly) updateLiveStatistics();
+  else renderStatistics();
 }
 
 function assistantTrack(track) {
@@ -1712,6 +1841,8 @@ function loadTrack(track, autoplay = true) {
   if (!track) return;
   beginListeningSession(track);
   state.currentId = track.id;
+  state.playbackFailureTrackId = null;
+  state.historyConfirmedTrackId = null;
   if (!state.queue.some((item) => item.id === track.id)) state.queue.push(track);
   audio.src = track.url;
   $('#playerTitle').textContent = track.title;
@@ -1719,14 +1850,24 @@ function loadTrack(track, autoplay = true) {
   $('#playerCover').style.backgroundImage = track.cover ? `url('${track.cover}')` : '';
   $('.cover-note').style.display = track.cover ? 'none' : 'block';
   $('#playerFavoriteBtn').classList.toggle('active', state.favorites.has(track.id));
-  addToHistory(track.id);
   renderLibrary();
   renderQueue();
   renderNowPlaying();
   renderLyrics(track);
   loadAssignedLyrics(track);
   updateStats();
-  if (autoplay) playAudio().catch(() => showToast('无法播放此音频文件'));
+  if (autoplay) attemptPlayback(track);
+}
+
+async function attemptPlayback(track = currentTrack()) {
+  if (!track) return false;
+  try {
+    await playAudio();
+    return true;
+  } catch (error) {
+    showPlaybackFailure(track, error);
+    return false;
+  }
 }
 
 function togglePlay() {
@@ -1735,7 +1876,7 @@ function togglePlay() {
     if (first) loadTrack(first); else showToast('请先添加音乐');
     return;
   }
-  audio.paused ? playAudio() : audio.pause();
+  audio.paused ? attemptPlayback() : audio.pause();
 }
 
 function nextTrack(direction = 1) {
@@ -2063,9 +2204,9 @@ function playFromLyricLine(line) {
       state.lyricManualScrollUntil = 0;
       updatePlaybackProgress();
       updateLyricPosition(targetTime, true);
-      playAudio()
-        .then(() => showToast(`已从 ${formatTime(targetTime)} 开始播放`))
-        .catch(() => showToast('无法从这句歌词开始播放'));
+      attemptPlayback().then((played) => {
+        if (played) showToast(`已从 ${formatTime(targetTime)} 开始播放`);
+      });
     } catch {
       showToast('歌词跳转失败，请稍后重试');
     }
@@ -2178,9 +2319,11 @@ $('#confirmDeletePlaylistBtn').addEventListener('click', () => {
   renderView();
   showToast('歌单已删除');
 });
+$('#keepFailedTrackBtn').addEventListener('click', closePlaybackFailure);
+$('#removeFailedTrackBtn').addEventListener('click', removeFailedTrackFromLists);
 document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', closeModals));
 document.querySelectorAll('.modal-backdrop').forEach((modal) => modal.addEventListener('click', (event) => {
-  if (event.target === modal) closeModals();
+  if (event.target === modal && modal.id !== 'playbackErrorModal') closeModals();
 }));
 
 document.addEventListener('dragover', (event) => {
@@ -2220,7 +2363,8 @@ document.addEventListener('pointerdown', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     const openModalElement = [...document.querySelectorAll('.modal-backdrop')].find((modal) => !modal.hidden);
-    if (openModalElement) closeModals();
+    if (openModalElement?.id === 'playbackErrorModal') closePlaybackFailure();
+    else if (openModalElement) closeModals();
     else if (document.body.classList.contains('queue-open')) closeQueueMenu();
     else if (state.playerOpen) closeNowPlayingPage();
   }
@@ -2245,8 +2389,19 @@ $('#muteBtn').addEventListener('click', () => {
   state.muted = !state.muted;
   applyPlaybackSettings();
 });
-audio.addEventListener('play', () => { document.body.classList.add('is-playing'); renderLibrary(); runLyricClock(); });
+audio.addEventListener('play', () => {
+  document.body.classList.add('is-playing');
+  const track = currentTrack();
+  if (track && state.historyConfirmedTrackId !== track.id) {
+    addToHistory(track.id);
+    state.historyConfirmedTrackId = track.id;
+    updateStats();
+  }
+  renderLibrary();
+  runLyricClock();
+});
 audio.addEventListener('pause', () => { document.body.classList.remove('is-playing'); renderLibrary(); stopLyricClock(); updateLyricPosition(audio.currentTime); });
+audio.addEventListener('error', () => showPlaybackFailure(currentTrack(), audio.error));
 audio.addEventListener('loadedmetadata', () => {
   $('#totalTime').textContent = formatTime(audio.duration);
 });
@@ -2262,7 +2417,7 @@ audio.addEventListener('seeking', () => { updatePlaybackProgress(); updateLyricP
 audio.addEventListener('seeked', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); });
 audio.addEventListener('ratechange', () => { if (!audio.paused) runLyricClock(); });
 audio.addEventListener('ended', () => {
-  if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; playAudio(); }
+  if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; attemptPlayback(); }
   else if (state.repeat === 'all' || state.queue.findIndex((track) => track.id === state.currentId) < state.queue.length - 1) nextTrack(1);
 });
 setInterval(tickListeningStatistics, 1000);
@@ -2307,7 +2462,7 @@ async function init() {
   renderView();
   renderQueue();
   updateStats();
-  const savedPaths = readStorage('libraryPaths', []);
+  const savedPaths = readArrayStorage('libraryPaths').filter((item) => typeof item === 'string');
   if (savedPaths.length) {
     const restored = await window.desktop.restoreTracks(savedPaths);
     state.library = restored;
