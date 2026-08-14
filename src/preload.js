@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('desktop', {
   saveAssistantConfig: (config) => ipcRenderer.invoke('assistant:save-config', config),
   completeAssistant: (payload) => ipcRenderer.invoke('assistant:complete', payload),
   showInFolder: (filePath) => ipcRenderer.invoke('track:show-in-folder', filePath),
+  getTrackPathStatus: (filePath) => ipcRenderer.invoke('track:get-path-status', filePath),
   setDesktopLyricsVisible: (visible) => ipcRenderer.send('desktop-lyrics:set-visible', visible),
   updateDesktopLyrics: (payload) => ipcRenderer.send('desktop-lyrics:update', payload),
   setDesktopLyricsSettings: (settings) => ipcRenderer.send('desktop-lyrics:set-settings', settings),

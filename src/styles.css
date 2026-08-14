@@ -38,10 +38,7 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .equalizer-title-button.active { color: var(--red); border-color: transparent; background: transparent; }
 .equalizer-title-button.active:hover { border-color: rgba(var(--accent-rgb),.16); background: var(--red-soft); }
 .brand-mini { height: 29px; padding: 0 4px; display: flex; gap: 9px; align-items: center; color: #555357; font-weight: 650; font-size: 12px; letter-spacing: .02em; }
-.brand-dot { width: 22px; height: 22px; position: relative; flex: none; border-radius: 7px; background: var(--ink); box-shadow: 0 4px 10px rgba(20,18,19,.16); transform: rotate(-4deg); }
-.brand-dot::before, .brand-dot::after { content: ""; position: absolute; top: 5px; width: 3px; border-radius: 4px; }
-.brand-dot::before { left: 7px; height: 12px; background: #fff; }
-.brand-dot::after { right: 6px; top: 8px; height: 9px; background: var(--red-bright); }
+.titlebar-app-icon { width: 22px; height: 22px; display: block; flex: none; border-radius: 7px; object-fit: contain; filter: drop-shadow(0 4px 7px rgba(28,84,151,.18)); transform: rotate(-3deg); }
 .window-actions { height: 32px; padding-left: 12px; display: flex; align-items: center; gap: 3px; position: relative; -webkit-app-region: no-drag; }
 .window-actions::before { content: ""; position: absolute; left: 0; width: 1px; height: 15px; background: rgba(35,30,30,.09); }
 .window-btn { width: 33px; height: 27px; border: 1px solid transparent; border-radius: 8px; display: grid; place-items: center; color: #666368; transition: color .17s, background .17s, border-color .17s, transform .17s, box-shadow .17s; }
@@ -58,11 +55,7 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .workspace { min-width: 0; min-height: 0; display: grid; grid-template-columns: var(--sidebar-width) minmax(560px, 1fr); gap: var(--workspace-gap); padding: var(--workspace-edge); background: #e9e8e5; }
 .sidebar { background: var(--sidebar); border: 1px solid rgba(35,30,30,.055); border-radius: var(--panel-radius); padding: 28px 18px 22px; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 10px 34px rgba(25,20,20,.035); }
 .brand { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 11px; }
-.brand-mark { width: 36px; height: 36px; border-radius: 11px; background: var(--ink); display: grid; place-items: center; box-shadow: 0 6px 15px rgba(0,0,0,.13); transform: rotate(-5deg); }
-.brand-mark::before, .brand-mark::after, .brand-mark span { content: ""; display: block; position: absolute; background: #fff; border-radius: 10px; }
-.brand-mark { position: relative; }
-.brand-mark::before { width: 4px; height: 16px; transform: translate(-5px, 0); }
-.brand-mark::after { width: 4px; height: 10px; transform: translate(3px, 3px); background: var(--red-bright); }
+.brand-mark { width: 36px; height: 36px; display: block; flex: none; border-radius: 11px; object-fit: contain; filter: drop-shadow(0 6px 9px rgba(28,84,151,.22)); transform: rotate(-4deg); }
 .brand strong { display: block; font-size: 18px; letter-spacing: .04em; }
 .brand small { display: block; font-size: 9px; letter-spacing: .24em; color: #999; margin-top: 2px; }
 .nav-list { flex: 1; min-height: 0; margin-top: 36px; padding-bottom: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #d4d1ce transparent; }
@@ -390,9 +383,7 @@ body.is-playing .play-button .pause-icon { display: block; }
 .about-close { position: absolute; z-index: 2; right: 22px; top: 20px; }
 .about-identity { display: grid; grid-template-columns: 86px minmax(0,1fr); gap: 21px; align-items: center; }
 .about-identity > :last-child { min-width: 0; padding-right: 28px; }
-.about-product-mark { position: relative; width: 82px; height: 82px; display: grid; place-items: center; border-radius: 25px; color: var(--red-bright); background: linear-gradient(145deg, var(--ink), #363439); box-shadow: 0 16px 35px rgba(20,17,20,.23), inset 0 0 0 1px rgba(255,255,255,.08); transform: rotate(-4deg); }
-.about-product-mark span { font-size: 36px; font-weight: 850; transform: rotate(4deg); }
-.about-product-mark i { position: absolute; width: 10px; height: 10px; right: 10px; bottom: 10px; border: 3px solid var(--ink); border-radius: 50%; background: var(--red-bright); }
+.about-product-mark { width: 82px; height: 82px; display: block; border-radius: 25px; object-fit: contain; filter: drop-shadow(0 16px 18px rgba(28,84,151,.24)); transform: rotate(-4deg); }
 .about-kicker { color: var(--red); font-size: 9px; font-weight: 850; letter-spacing: .15em; }
 .about-identity h2 { margin: 5px 0 5px; color: var(--ink); font-size: 28px; letter-spacing: -.04em; }
 .about-identity p { margin: 0; color: #8b898d; font-size: 12px; line-height: 1.6; }
@@ -490,7 +481,7 @@ body.is-playing .play-button .pause-icon { display: block; }
 .settings-card { width: min(780px, 100%); height: min(610px, 100%); max-height: 100%; display: grid; grid-template-columns: 190px minmax(0,1fr); overflow: hidden; border-radius: 22px; background: #fff; box-shadow: 0 28px 90px rgba(0,0,0,.26); animation: modalRise .22s ease; }
 .settings-sidebar { min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 25px 14px 18px; background: #f3f2f0; border-right: 1px solid var(--line); }
 .settings-brand { height: 48px; padding: 0 11px; display: flex; align-items: center; gap: 10px; }
-.settings-brand .brand-dot { flex: none; }
+.settings-app-icon { width: 22px; height: 22px; display: block; flex: none; border-radius: 7px; object-fit: contain; filter: drop-shadow(0 4px 7px rgba(28,84,151,.18)); transform: rotate(-3deg); }
 .settings-brand strong { display: block; font-size: 17px; }
 .settings-brand small { display: block; margin-top: 2px; color: #999; font-size: 8px; letter-spacing: .16em; }
 .settings-sidebar nav { margin-top: 20px; }

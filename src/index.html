@@ -11,7 +11,7 @@
   <div class="app-shell">
     <header class="titlebar">
       <div class="drag-region">
-        <div class="brand-mini"><span class="brand-dot"></span><span>Yuvis音乐</span></div>
+        <div class="brand-mini"><img class="titlebar-app-icon" src="app-icon.png" alt=""><span>Yuvis音乐</span></div>
         <div class="titlebar-tools">
           <button id="equalizerBtn" class="titlebar-tool-button equalizer-title-button" aria-label="打开声音均衡器" title="声音均衡器">
             <svg viewBox="0 0 24 24"><path d="M4 7h5M15 7h5M9 4v6M4 17h3M13 17h7M7 14v6M4 12h9M19 12h1M13 9v6M15 7h.01"/></svg>
@@ -48,7 +48,7 @@
     <div class="workspace">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark"><span></span></div>
+          <img class="brand-mark" src="app-icon.png" alt="Yuvis音乐图标">
           <div><strong>Yuvis音乐</strong><small>LOCAL PLAYER</small></div>
         </div>
 
@@ -233,7 +233,7 @@
     <article class="about-card" aria-labelledby="aboutProductName">
       <button class="modal-close about-close" data-close-modal aria-label="关闭关于页面"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       <div class="about-identity">
-        <div class="about-product-mark"><span>Y</span><i></i></div>
+        <img class="about-product-mark" src="app-icon.png" alt="Yuvis音乐图标">
         <div>
           <span class="about-kicker">ABOUT YUVIS MUSIC</span>
           <h2 id="aboutProductName">Yuvis音乐</h2>
@@ -317,7 +317,7 @@
       <div class="delete-confirm-icon playback-error-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
       </div>
-      <span class="delete-confirm-kicker">PLAYBACK ERROR</span>
+      <span class="delete-confirm-kicker" id="playbackErrorCategory">PLAYBACK ERROR</span>
       <h3 id="playbackErrorTitle">无法播放这首歌曲</h3>
       <p id="playbackErrorDescription">歌曲「<strong id="playbackErrorTrack"></strong>」播放失败。</p>
       <div class="delete-confirm-note playback-error-note">
@@ -342,7 +342,7 @@
   <div class="modal-backdrop" id="settingsModal" hidden>
     <div class="settings-card">
       <aside class="settings-sidebar">
-        <div class="settings-brand"><span class="brand-dot"></span><div><strong>设置</strong><small>YUVIS MUSIC</small></div></div>
+        <div class="settings-brand"><img class="settings-app-icon" src="app-icon.png" alt=""><div><strong>设置</strong><small>YUVIS MUSIC</small></div></div>
         <nav aria-label="设置分类">
           <button class="active" data-settings-section="playback"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z"/></svg><span>播放</span></button>
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>

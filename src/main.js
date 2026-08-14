@@ -131,6 +131,7 @@ function createWindow() {
     minHeight: 680,
     frame: false,
     backgroundColor: '#f7f7f5',
+    icon: path.join(__dirname, 'app-icon.png'),
     titleBarStyle: 'hidden',
     show: false,
     webPreferences: {
@@ -424,6 +425,23 @@ ipcMain.handle('library:restore', async (_event, paths) => {
 ipcMain.handle('library:load-dropped', async (_event, paths) => {
   const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
   return loadTracks(validPaths);
+});
+
+ipcMain.handle('track:get-path-status', async (_event, filePath) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) {
+    return { exists: false, accessible: false, code: 'INVALID_PATH' };
+  }
+  try {
+    const stats = await fs.stat(filePath);
+    if (!stats.isFile()) return { exists: false, accessible: false, code: 'NOT_A_FILE' };
+    const handle = await fs.open(filePath, 'r');
+    await handle.close();
+    return { exists: true, accessible: true, code: null };
+  } catch (error) {
+    const code = typeof error?.code === 'string' ? error.code : 'UNKNOWN';
+    const missing = ['ENOENT', 'ENOTDIR'].includes(code);
+    return { exists: !missing, accessible: false, code };
+  }
 });
 
 ipcMain.handle('lyrics:choose-file', async () => {

@@ -980,28 +980,58 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
-function playbackFailureReason(error) {
+function playbackFailureDetails(error, pathStatus) {
+  if (pathStatus?.exists === false) {
+    return {
+      category: 'LOCAL FILE MISSING',
+      reason: '找不到本地音频文件，文件可能已被移动、重命名或删除'
+    };
+  }
+  if (pathStatus?.exists === true && pathStatus.accessible === false) {
+    return {
+      category: 'FILE ACCESS DENIED',
+      reason: '本地文件仍在原路径，但播放器当前没有读取权限'
+    };
+  }
   const mediaErrorCode = Number(audio.error?.code || error?.code);
-  const mediaReasons = {
-    1: '播放请求被系统或用户中止',
-    2: '音频文件无法读取，可能已被移动、删除或暂时不可访问',
-    3: '音频数据已损坏，播放器无法完成解码',
-    4: '当前音频格式或编码方式不受支持'
+  const mediaDetails = {
+    1: { category: 'PLAYBACK ABORTED', reason: '播放请求被系统或用户中止' },
+    2: { category: 'FILE READ FAILED', reason: '文件路径有效，但播放器无法读取音频数据，请检查文件是否被其他程序占用' },
+    3: { category: 'DECODING FAILED', reason: '文件路径有效，但音频已损坏或使用了播放器无法解码的编码方式' },
+    4: { category: 'UNSUPPORTED AUDIO', reason: '本地文件路径有效，但当前音频格式或编码方式不受支持' }
   };
-  if (mediaReasons[mediaErrorCode]) return mediaReasons[mediaErrorCode];
-  if (error?.name === 'NotAllowedError') return '系统阻止了播放请求，请再次点击播放后重试';
-  if (error?.name === 'NotSupportedError') return '当前音频格式或编码方式不受支持';
-  if (error?.name === 'AbortError') return '播放请求在音频加载完成前被中止';
+  if (mediaDetails[mediaErrorCode]) return mediaDetails[mediaErrorCode];
+  if (error?.name === 'NotAllowedError') {
+    return { category: 'PLAYBACK BLOCKED', reason: '系统阻止了播放请求，请再次点击播放后重试' };
+  }
+  if (error?.name === 'NotSupportedError') {
+    return { category: 'UNSUPPORTED AUDIO', reason: '本地文件路径有效，但当前音频格式或编码方式不受支持' };
+  }
+  if (error?.name === 'AbortError') {
+    return { category: 'PLAYBACK ABORTED', reason: '播放请求在音频加载完成前被中止' };
+  }
   const detail = String(error?.message || '').trim();
-  return detail ? `播放器返回错误：${detail.slice(0, 180)}` : '暂时无法读取或解码这个音频文件';
+  return {
+    category: 'PLAYBACK ERROR',
+    reason: detail ? `播放器返回错误：${detail.slice(0, 180)}` : '文件路径有效，但暂时无法读取或解码这个音频文件'
+  };
 }
 
-function showPlaybackFailure(track, error) {
+async function showPlaybackFailure(track, error) {
   if (!track || track.id !== state.currentId) return;
-  if (state.playbackFailureTrackId === track.id && !$('#playbackErrorModal').hidden) return;
+  if (state.playbackFailureTrackId === track.id) return;
   state.playbackFailureTrackId = track.id;
+  let pathStatus = null;
+  try {
+    pathStatus = await window.desktop.getTrackPathStatus(track.path);
+  } catch (pathError) {
+    console.warn('Unable to inspect failed track path:', pathError);
+  }
+  if (state.playbackFailureTrackId !== track.id || state.currentId !== track.id) return;
+  const failure = playbackFailureDetails(error, pathStatus);
   $('#playbackErrorTrack').textContent = track.title;
-  $('#playbackErrorReason').textContent = playbackFailureReason(error);
+  $('#playbackErrorCategory').textContent = failure.category;
+  $('#playbackErrorReason').textContent = failure.reason;
   closeModals();
   openModal($('#playbackErrorModal'));
 }
@@ -1865,7 +1895,7 @@ async function attemptPlayback(track = currentTrack()) {
     await playAudio();
     return true;
   } catch (error) {
-    showPlaybackFailure(track, error);
+    await showPlaybackFailure(track, error);
     return false;
   }
 }
