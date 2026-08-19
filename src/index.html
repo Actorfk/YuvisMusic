@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; media-src 'self' file: blob:; style-src 'self'; script-src 'self';" />
+  <title>Yuvis音乐</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="titlebar">
+      <div class="drag-region">
+        <div class="brand-mini"><img class="titlebar-app-icon" src="app-icon.png" alt=""><span>Yuvis音乐</span></div>
+        <div class="titlebar-tools">
+          <button id="equalizerBtn" class="titlebar-tool-button equalizer-title-button" aria-label="打开声音均衡器" title="声音均衡器">
+            <svg viewBox="0 0 24 24"><path d="M4 7h5M15 7h5M9 4v6M4 17h3M13 17h7M7 14v6M4 12h9M19 12h1M13 9v6M15 7h.01"/></svg>
+            <span>均衡器</span>
+          </button>
+          <button id="aiDocsTitleBtn" class="titlebar-tool-button" aria-label="打开 AI 对接文档" title="AI 对接文档">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h5M9 12h7M9 16h7"/></svg>
+            <span>AI 对接文档</span>
+          </button>
+          <button id="shortcutsTitleBtn" class="titlebar-tool-button" aria-label="查看快捷键" title="快捷键">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h7"/></svg>
+            <span>快捷键</span>
+          </button>
+          <button id="aboutTitleBtn" class="titlebar-tool-button" aria-label="关于 Yuvis 音乐" title="关于">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <span>关于</span>
+          </button>
+        </div>
+      </div>
+      <div class="window-actions">
+        <button id="minimizeBtn" class="window-btn" aria-label="最小化" title="最小化">
+          <svg viewBox="0 0 16 16"><path d="M4 10.5h8" /></svg>
+        </button>
+        <button id="maximizeBtn" class="window-btn" aria-label="最大化" title="最大化">
+          <svg class="maximize-icon" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="1.5" /></svg>
+          <svg class="restore-icon" viewBox="0 0 16 16"><path d="M5.5 5V3.8c0-.7.5-1.2 1.2-1.2h5.5c.7 0 1.2.5 1.2 1.2v5.5c0 .7-.5 1.2-1.2 1.2H11"/><rect x="2.7" y="5.5" width="7.8" height="7.8" rx="1.4"/></svg>
+        </button>
+        <button id="closeBtn" class="window-btn close" aria-label="关闭" title="关闭">
+          <svg viewBox="0 0 16 16"><path d="m4.5 4.5 7 7m0-7-7 7" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-mark" src="app-icon.png" alt="Yuvis音乐图标">
+          <div><strong>Yuvis音乐</strong><small>LOCAL PLAYER</small></div>
+        </div>
+
+        <nav class="nav-list" aria-label="主导航">
+          <p class="nav-label">音乐</p>
+          <button class="nav-item active" data-view="library">
+            <svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h10" /></svg>
+            <span>音乐库</span><em id="libraryBadge">0</em>
+          </button>
+          <button class="nav-item" data-view="favorite">
+            <svg viewBox="0 0 24 24"><path d="M20.8 5.8a5.5 5.5 0 0 0-7.8 0L12 6.9l-1.1-1.1a5.5 5.5 0 0 0-7.7 7.8L12 22l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z" /></svg>
+            <span>我的喜欢</span><em id="favoriteBadge">0</em>
+          </button>
+          <button class="nav-item" data-view="recent">
+            <svg viewBox="0 0 24 24"><path d="M12 7v5l3.5 2M4.9 19.1A10 10 0 1 0 2 12" /><path d="M2 7v5h5" /></svg>
+            <span>最近播放</span>
+          </button>
+          <button class="nav-item" data-view="assistant">
+            <svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+            <span>Yuvis 助手</span>
+          </button>
+          <button class="nav-item" data-view="stats">
+            <svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-9"/><path d="M3 19h18"/></svg>
+            <span>统计数据</span>
+          </button>
+          <p class="nav-label second">本地</p>
+          <button class="nav-item" id="folderNavBtn">
+            <svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3z" /></svg>
+            <span>导入本地音乐</span>
+          </button>
+          <div class="playlist-label-row">
+            <p class="nav-label second">我的歌单</p>
+            <button id="createPlaylistBtn" class="create-playlist-button" aria-label="创建歌单"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div id="playlistNav" class="playlist-nav"></div>
+        </nav>
+
+        <button class="nav-item sidebar-settings-button" id="sidebarSettingsBtn" aria-label="设置" title="设置">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+          <span>设置</span>
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <section class="main-header">
+          <div>
+            <p class="eyebrow" id="viewEyebrow">你的私人音乐空间</p>
+            <h1 id="viewTitle">音乐库</h1>
+          </div>
+          <div class="header-actions">
+            <label class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
+              <input id="searchInput" type="search" placeholder="搜索音乐、艺术家或专辑" />
+              <kbd>Ctrl K</kbd>
+            </label>
+          </div>
+        </section>
+
+        <section class="now-playing-page" id="nowPlayingPage" aria-label="歌词播放页" hidden>
+          <div class="now-playing-sheet">
+            <button class="player-page-close" id="closeNowPlayingBtn" aria-label="收起播放页"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button class="player-page-fullscreen" id="fullscreenLyricsBtn" aria-label="进入全屏歌词" aria-pressed="false" title="全屏歌词">
+              <svg class="fullscreen-enter-icon" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/></svg>
+              <svg class="fullscreen-exit-icon" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"/></svg>
+              <span>全屏歌词</span>
+            </button>
+            <div class="detail-kicker"><i></i> NOW PLAYING</div>
+            <div class="detail-art-stage">
+              <div class="detail-halo"></div>
+              <div class="detail-cover" id="detailCover"><span>♪</span></div>
+              <div class="detail-vinyl"><i></i></div>
+            </div>
+            <div class="detail-content">
+            <h2 id="detailTitle">尚未播放</h2>
+            <p class="detail-artist" id="detailArtist">选择一首本地音乐，开始聆听</p>
+            <p class="detail-album" id="detailAlbum">Yuvis音乐 · 本地播放器</p>
+            <div class="lyrics-toolbar">
+              <span class="lyrics-source" id="lyricsSource"><i></i> 暂无歌词</span>
+              <button id="chooseLyricsBtn"><svg viewBox="0 0 24 24"><path d="M4 6.5h6l2 2h8v10H4z"/><path d="M12 12v5M9.5 14.5h5"/></svg>指定歌词文件</button>
+            </div>
+            <div class="lyrics-offset-control" id="lyricsOffsetControl">
+              <span>歌词微调</span>
+              <button data-lyrics-offset-step="-0.1" aria-label="歌词提前 0.1 秒">−</button>
+              <button class="lyrics-offset-value" id="lyricsOffsetValue" data-lyrics-offset-reset aria-label="重置歌词微调">0.0s</button>
+              <button data-lyrics-offset-step="0.1" aria-label="歌词延后 0.1 秒">＋</button>
+              <small>− 提前 / ＋ 延后</small>
+            </div>
+            <div class="detail-lyrics" id="detailLyrics">
+              <div class="lyrics-empty">
+                <svg viewBox="0 0 32 32"><path d="M8 6h16v20H8zM12 11h8M12 16h8M12 21h5"/></svg>
+                <strong>这首歌还没有歌词</strong>
+                <span>可读取内嵌歌词，也可以指定 LRC 或 TXT 文件</span>
+              </div>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="library-section">
+          <div class="section-heading">
+            <div><h3 id="sectionTitle">全部音乐</h3><span id="trackSummary">0 首歌曲</span></div>
+            <div class="section-tools">
+              <button class="text-button" id="playAllBtn"><svg viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z" /></svg>播放全部</button>
+              <button class="danger-text-button" id="deletePlaylistBtn" hidden>删除歌单</button>
+              <button class="icon-button compact" id="sortBtn" aria-label="排序"><svg viewBox="0 0 24 24"><path d="M8 6h12M4 6h.01M8 12h9M4 12h.01M8 18h6M4 18h.01" /></svg></button>
+            </div>
+          </div>
+
+          <div class="track-table">
+            <div class="track-row table-head">
+              <span class="track-index">#</span><span class="track-main">标题</span><span class="track-album">专辑</span><span class="track-date">添加时间</span><span class="track-time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span><span></span>
+            </div>
+            <div id="trackList"></div>
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon"><svg viewBox="0 0 32 32"><path d="M10 24V8l13-3v15"/><circle cx="7" cy="24" r="3"/><circle cx="20" cy="20" r="3"/></svg></div>
+              <h4>音乐库还是空的</h4>
+              <p>拖入本地音乐文件，或点击下方按钮开始导入</p>
+              <button class="inline-add" id="emptyAddBtn">选择音乐文件</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats-section" id="statsSection" hidden></section>
+
+        <section class="assistant-section" id="assistantSection" hidden>
+          <div class="assistant-toolbar">
+            <span><i></i>YUVIS CHAT</span>
+            <button id="newAssistantChatBtn" type="button" title="清空当前聊天并创建新对话"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新对话</button>
+          </div>
+          <div class="assistant-welcome" id="assistantWelcome">
+            <div class="assistant-mark"><span>Y</span></div>
+            <h3>你好，我是 Yuvis 助手</h3>
+            <p>我可以帮你查找歌曲、控制播放、整理队列和歌单，也能读取你的本地听歌统计。</p>
+            <div class="assistant-suggestions">
+              <button data-assistant-prompt="播放一首我喜欢的歌曲">播放喜欢的歌</button>
+              <button data-assistant-prompt="总结一下我的音乐库">总结音乐库</button>
+              <button data-assistant-prompt="查看今天的听歌情况">今日听歌情况</button>
+            </div>
+          </div>
+          <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+          <form class="assistant-composer" id="assistantForm">
+            <textarea id="assistantInput" rows="1" maxlength="2000" placeholder="让 Yuvis 帮你播放、查找或整理音乐…"></textarea>
+            <button id="assistantSendBtn" type="submit" aria-label="发送"><svg viewBox="0 0 24 24"><path d="m5 12 14-7-4 14-3-5z"/><path d="m12 14 7-9"/></svg></button>
+          </form>
+          <div class="assistant-config-hint" id="assistantConfigHint" hidden>请先在“设置 → Yuvis 配置”中填写模型信息。<button id="openAssistantConfigBtn">打开设置</button></div>
+        </section>
+      </main>
+
+      <aside class="queue-panel" id="queuePanel" aria-label="播放列表">
+        <div class="queue-header"><div><p>PLAY QUEUE</p><h3>播放列表</h3></div><button id="clearQueueBtn">清空</button></div>
+        <div class="queue-body" id="queueList">
+          <div class="queue-empty" id="queueEmpty">
+            <div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div>
+            <span>队列中暂无歌曲</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="player-bar">
+      <div class="now-playing" id="openNowPlaying" title="打开播放页">
+        <div class="player-cover" id="playerCover"><span class="cover-note">♪</span></div>
+        <div class="player-meta"><strong id="playerTitle">尚未播放</strong><span id="playerArtist">选择一首本地音乐</span></div>
+        <button class="heart-button" id="playerFavoriteBtn" aria-label="喜欢"><svg viewBox="0 0 24 24"><path d="M20.8 5.8a5.5 5.5 0 0 0-7.8 0L12 6.9l-1.1-1.1a5.5 5.5 0 0 0-7.7 7.8L12 22l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z" /></svg></button>
+      </div>
+      <div class="transport">
+        <div class="transport-buttons">
+          <button id="shuffleBtn" aria-label="随机播放"><svg viewBox="0 0 24 24"><path d="M4 7h3c4 0 6 10 10 10h3M17 4l3 3-3 3M4 17h3c1.4 0 2.6-1.2 3.7-2.8M14 9.8C15 8.2 16 7 17 7h3M17 14l3 3-3 3"/></svg></button>
+          <button id="previousBtn" aria-label="上一首"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z" /></svg></button>
+          <button class="play-button" id="playPauseBtn" aria-label="播放"><svg class="play-icon" viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z" /></svg><svg class="pause-icon" viewBox="0 0 24 24"><path d="M8 6v12M16 6v12" /></svg></button>
+          <button id="nextBtn" aria-label="下一首"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l9 6-9 6z" /></svg></button>
+          <button id="repeatBtn" aria-label="循环播放"><svg viewBox="0 0 24 24"><path d="m17 3 3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg><small>1</small></button>
+        </div>
+        <div class="progress-row"><span id="currentTime">0:00</span><input id="progressBar" class="range" type="range" min="0" max="100" value="0" step="0.1" /><span id="totalTime">0:00</span></div>
+      </div>
+      <div class="player-extras">
+        <button id="desktopLyricsBtn" class="desktop-lyrics-button" aria-label="开启桌面歌词" aria-pressed="false" title="桌面歌词"><span>词</span></button>
+        <button id="queueToggleBtn" aria-label="播放列表" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h14M4 11h14M4 16h8"/><path d="m16 15 5 3-5 3z"/></svg></button>
+        <button id="muteBtn" aria-label="静音"><svg viewBox="0 0 24 24"><path d="M5 10v4h4l5 4V6l-5 4zM17 9c1.5 1.5 1.5 4.5 0 6M19.5 6.5c3.2 3.2 3.2 7.8 0 11" /></svg></button>
+        <input id="volumeBar" class="range volume" type="range" min="0" max="1" value="0.8" step="0.01" />
+        <span id="qualityBadge">本地</span>
+      </div>
+    </footer>
+  </div>
+
+  <div class="modal-backdrop" id="aboutModal" hidden>
+    <article class="about-card" aria-labelledby="aboutProductName">
+      <button class="modal-close about-close" data-close-modal aria-label="关闭关于页面"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      <div class="about-identity">
+        <img class="about-product-mark" src="app-icon.png" alt="Yuvis音乐图标">
+        <div>
+          <span class="about-kicker">ABOUT YUVIS MUSIC</span>
+          <h2 id="aboutProductName">Yuvis音乐</h2>
+          <p>一款克制、专注且尊重隐私的 Windows 本地音乐播放器。</p>
+        </div>
+      </div>
+      <div class="about-story">
+        <strong>让音乐留在你的设备，也留在你的生活里。</strong>
+        <p>Yuvis音乐围绕本地音乐管理、沉浸播放、同步歌词、听歌统计和智能助手打造。音乐文件、收藏、歌单与应用设置均保存在本机。</p>
+      </div>
+      <div class="about-info-grid">
+        <div><span>制作人</span><strong>Yuvis</strong></div>
+        <div><span>当前版本</span><strong>1.0.0</strong></div>
+        <div><span>运行平台</span><strong>Windows</strong></div>
+        <div><span>产品定位</span><strong>本地音乐播放器</strong></div>
+      </div>
+      <footer class="about-footer">
+        <span><i></i>LOCAL FIRST</span><span><i></i>PRIVACY FRIENDLY</span><span><i></i>MADE BY YUVIS</span>
+      </footer>
+    </article>
+  </div>
+
+  <div class="modal-backdrop" id="equalizerModal" hidden>
+    <div class="equalizer-card">
+      <header class="equalizer-header">
+        <div><span class="equalizer-kicker">AUDIO EFFECTS</span><h3>声音均衡器</h3><p>实时调整不同频段，塑造适合你的声音。</p></div>
+        <div class="equalizer-header-actions">
+          <label class="equalizer-enable"><span>启用</span><input id="equalizerEnabledInput" class="switch-input" type="checkbox" /></label>
+          <button class="modal-close" data-close-modal aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+      </header>
+      <div class="equalizer-toolbar">
+        <label class="equalizer-preset-select"><span>当前方案</span><select id="equalizerPresetSelect"></select></label>
+        <button id="resetEqualizerBtn" class="equalizer-secondary-button" type="button"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>恢复默认</button>
+      </div>
+      <div class="equalizer-bands" id="equalizerBands" aria-label="十段声音均衡器"></div>
+      <div class="equalizer-scale"><span>+12 dB</span><i></i><span>0 dB</span><i></i><span>−12 dB</span></div>
+      <footer class="equalizer-footer">
+        <div class="equalizer-save-fields">
+          <input id="equalizerPresetNameInput" maxlength="24" autocomplete="off" placeholder="输入方案名称" />
+          <button id="saveEqualizerPresetBtn" type="button">保存方案</button>
+          <button id="deleteEqualizerPresetBtn" class="equalizer-delete-button" type="button" hidden>删除方案</button>
+        </div>
+        <span id="equalizerStatus">当前为默认平直音效</span>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="playlistModal" hidden>
+    <form class="modal-card" id="playlistForm">
+      <div class="modal-icon"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 11h11M4 16h8M19 13v7M15.5 16.5h7"/></svg></div>
+      <h3>创建新歌单</h3>
+      <p>给喜欢的音乐一个专属空间</p>
+      <label>歌单名称<input id="playlistNameInput" maxlength="30" placeholder="例如：夜晚慢慢听" autocomplete="off" /></label>
+      <div class="modal-actions"><button type="button" data-close-modal>取消</button><button class="modal-primary" type="submit">创建歌单</button></div>
+    </form>
+  </div>
+
+  <div class="modal-backdrop" id="deletePlaylistModal" hidden>
+    <article class="modal-card delete-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="deletePlaylistTitle" aria-describedby="deletePlaylistDescription">
+      <button class="modal-close delete-confirm-close" type="button" data-close-modal aria-label="关闭删除歌单窗口"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      <div class="delete-confirm-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+      </div>
+      <span class="delete-confirm-kicker">PLAYLIST</span>
+      <h3 id="deletePlaylistTitle">删除这个歌单？</h3>
+      <p id="deletePlaylistDescription">即将删除歌单「<strong id="deletePlaylistName"></strong>」。</p>
+      <div class="delete-confirm-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>
+        <span><strong>音乐文件会保留</strong><small>仅删除歌单和其中的歌曲整理记录，不会删除本地音乐。</small></span>
+      </div>
+      <div class="modal-actions delete-confirm-actions">
+        <button type="button" data-close-modal>取消</button>
+        <button class="modal-danger" id="confirmDeletePlaylistBtn" type="button"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>确认删除</button>
+      </div>
+    </article>
+  </div>
+
+  <div class="modal-backdrop" id="playbackErrorModal" hidden>
+    <article class="modal-card delete-confirm-card playback-error-card" role="alertdialog" aria-modal="true" aria-labelledby="playbackErrorTitle" aria-describedby="playbackErrorDescription">
+      <div class="delete-confirm-icon playback-error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <span class="delete-confirm-kicker" id="playbackErrorCategory">PLAYBACK ERROR</span>
+      <h3 id="playbackErrorTitle">无法播放这首歌曲</h3>
+      <p id="playbackErrorDescription">歌曲「<strong id="playbackErrorTrack"></strong>」播放失败。</p>
+      <div class="delete-confirm-note playback-error-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <span><strong id="playbackErrorReason">暂时无法读取音频文件</strong><small>可以保留歌曲稍后重试，或将它从播放列表和所有歌单中移出；本地文件不会被删除。</small></span>
+      </div>
+      <div class="modal-actions delete-confirm-actions">
+        <button id="keepFailedTrackBtn" type="button">保留歌曲</button>
+        <button class="modal-danger" id="removeFailedTrackBtn" type="button"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>移出列表与歌单</button>
+      </div>
+    </article>
+  </div>
+
+  <div class="modal-backdrop" id="addToPlaylistModal" hidden>
+    <div class="modal-card playlist-picker-card">
+      <div class="modal-title-row"><div><h3>添加到歌单</h3><p id="addTrackHint">选择一个歌单</p></div><button class="modal-close" data-close-modal aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <div id="playlistPickerList" class="playlist-picker-list"></div>
+      <button id="pickerCreatePlaylistBtn" class="picker-create-button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新建歌单</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="settings-card">
+      <aside class="settings-sidebar">
+        <div class="settings-brand"><img class="settings-app-icon" src="app-icon.png" alt=""><div><strong>设置</strong><small>YUVIS MUSIC</small></div></div>
+        <nav aria-label="设置分类">
+          <button class="active" data-settings-section="playback"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z"/></svg><span>播放</span></button>
+          <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
+          <button data-settings-section="fullscreenLyrics"><svg viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/><path d="M8 12h8M8 16h6"/></svg><span>全屏歌词</span></button>
+          <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
+          <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
+        </nav>
+      </aside>
+      <section class="settings-content">
+        <header class="settings-header">
+          <div><h3 id="settingsTitle">播放设置</h3><p id="settingsDescription">控制音量与默认播放行为</p></div>
+          <button class="modal-close" data-close-modal aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </header>
+
+        <div class="settings-panel" data-settings-panel="playback">
+          <div class="settings-section-title"><span>声音</span><small>更改后会自动保存</small></div>
+          <div class="settings-volume-row">
+            <span class="volume-icon"><svg viewBox="0 0 24 24"><path d="M5 10v4h4l5 4V6l-5 4zM17 9c1.5 1.5 1.5 4.5 0 6"/></svg></span>
+            <input id="settingsVolumeBar" class="range" type="range" min="0" max="1" value="0.8" step="0.01" />
+            <strong id="settingsVolumeValue">80%</strong>
+          </div>
+          <div class="setting-list compact-setting-list">
+            <label class="setting-row"><span><strong>静音</strong><small>下次启动时保持当前静音状态</small></span><input id="settingsMutedInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>随机播放</strong><small>启动后继续使用上次选择的播放顺序</small></span><input id="settingsShuffleInput" class="switch-input" type="checkbox" /></label>
+          </div>
+          <div class="setting-block repeat-setting-block">
+            <span class="setting-label">循环方式</span>
+            <div class="repeat-options" id="settingsRepeatOptions">
+              <button data-repeat-mode="off">关闭循环</button><button data-repeat-mode="all">列表循环</button><button data-repeat-mode="one">单曲循环</button>
+            </div>
+          </div>
+          <div class="settings-save-note"><i></i><span>音量、静音、随机、循环和歌词设置都会在更改时立即保存。</span></div>
+        </div>
+
+        <div class="settings-panel" id="desktopLyricsPanel" data-settings-panel="desktopLyrics" hidden>
+          <div class="setting-list compact-setting-list">
+            <label class="setting-row"><span><strong>显示桌面歌词</strong><small>在其他窗口上方显示当前歌词</small></span><input id="desktopLyricsEnabledInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>双层歌词</strong><small>显示翻译；没有翻译时显示下一句</small></span><input id="desktopLyricsDualInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>锁定桌面歌词</strong><small>禁止拖动与缩放；锁定后可在歌词上右击解锁</small></span><input id="desktopLyricsLockedInput" class="switch-input" type="checkbox" /></label>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">显示样式</span>
+            <div class="lyric-style-options" id="desktopLyricsStyleOptions">
+              <button data-lyric-style="plain"><i class="style-preview plain">词</i><span>纯文字</span></button>
+              <button data-lyric-style="classic"><i class="style-preview classic">词</i><span>经典</span></button>
+              <button data-lyric-style="outline"><i class="style-preview outline">词</i><span>描边</span></button>
+              <button data-lyric-style="soft"><i class="style-preview soft">词</i><span>柔光</span></button>
+            </div>
+          </div>
+          <div class="setting-block color-setting-block">
+            <span class="setting-label">歌词颜色</span>
+            <label class="color-setting"><span><i class="color-dot primary"></i>主歌词</span><input id="desktopLyricsPrimaryColor" type="color" value="#ff3156" /></label>
+            <label class="color-setting"><span><i class="color-dot secondary"></i>副歌词</span><input id="desktopLyricsSecondaryColor" type="color" value="#ffffff" /></label>
+            <div class="color-presets" id="desktopLyricsColorPresets" aria-label="主歌词预设颜色">
+              <button data-color="#ff3156" aria-label="一点红"></button><button data-color="#ffb300" aria-label="琥珀黄"></button><button data-color="#4cc9f0" aria-label="天空蓝"></button><button data-color="#8bffb0" aria-label="薄荷绿"></button><button data-color="#ffffff" aria-label="纯白"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel fullscreen-lyrics-panel" data-settings-panel="fullscreenLyrics" hidden>
+          <div class="settings-section-title"><span>全屏布局</span><small>进入全屏歌词时立即应用</small></div>
+          <div class="fullscreen-style-options" id="fullscreenLyricsStyleOptions">
+            <button data-fullscreen-lyric-style="original">
+              <i class="fullscreen-style-preview original"><b></b><span></span><em></em></i>
+              <strong>原版页面</strong><small>与非全屏歌词页一致</small>
+            </button>
+            <button data-fullscreen-lyric-style="immersive">
+              <i class="fullscreen-style-preview immersive"><b></b><span></span><em></em></i>
+              <strong>沉浸唱片</strong><small>唱片与歌词并列</small>
+            </button>
+            <button data-fullscreen-lyric-style="minimal">
+              <i class="fullscreen-style-preview minimal"><span></span><em></em><b></b></i>
+              <strong>极简居中</strong><small>隐藏封面，专注歌词</small>
+            </button>
+            <button data-fullscreen-lyric-style="aurora">
+              <i class="fullscreen-style-preview aurora"><b></b><span></span><em></em></i>
+              <strong>极光柔光</strong><small>蓝紫渐变氛围</small>
+            </button>
+            <button data-fullscreen-lyric-style="cinema">
+              <i class="fullscreen-style-preview cinema"><b></b><span></span><em></em></i>
+              <strong>黑金剧院</strong><small>深黑与金色高光</small>
+            </button>
+            <button data-fullscreen-lyric-style="sunset">
+              <i class="fullscreen-style-preview sunset"><b></b><span></span><em></em></i>
+              <strong>日落暖橙</strong><small>橙红暮色氛围</small>
+            </button>
+            <button data-fullscreen-lyric-style="glass">
+              <i class="fullscreen-style-preview glass"><b></b><span></span><em></em></i>
+              <strong>云端玻璃</strong><small>明亮通透的蓝白</small>
+            </button>
+          </div>
+          <div class="setting-block fullscreen-font-block">
+            <span class="setting-label">歌词字号</span>
+            <div class="fullscreen-font-options" id="fullscreenLyricsFontOptions">
+              <button data-fullscreen-lyric-font="compact">紧凑</button>
+              <button data-fullscreen-lyric-font="standard">标准</button>
+              <button data-fullscreen-lyric-font="large">大字</button>
+            </div>
+          </div>
+          <div class="settings-save-note"><i></i><span>全屏歌词样式只影响应用内全屏页面，不会改变桌面悬浮歌词。</span></div>
+        </div>
+
+        <div class="settings-panel appearance-panel" data-settings-panel="appearance" hidden>
+          <div class="settings-section-title"><span>主题主色</span><small>应用到按钮、进度和选中状态</small></div>
+          <div class="appearance-theme-options" id="appearanceThemeOptions">
+            <button data-theme="crimson"><i></i><span>绯红</span></button>
+            <button data-theme="indigo"><i></i><span>靛蓝</span></button>
+            <button data-theme="ocean"><i></i><span>海蓝</span></button>
+            <button data-theme="jade"><i></i><span>松绿</span></button>
+            <button data-theme="amber"><i></i><span>琥珀</span></button>
+            <button data-theme="rose"><i></i><span>玫瑰</span></button>
+          </div>
+          <div class="appearance-font-block">
+            <div class="settings-section-title"><span>字体大小</span><small>同步调整应用文字与控件</small></div>
+            <div class="font-size-options" id="fontSizeOptions">
+              <button data-font-size="small"><i>Aa</i><span>小</span><small>90%</small></button>
+              <button data-font-size="standard"><i>Aa</i><span>标准</span><small>100%</small></button>
+              <button data-font-size="large"><i>Aa</i><span>大</span><small>110%</small></button>
+              <button data-font-size="extraLarge"><i>Aa</i><span>超大</span><small>120%</small></button>
+            </div>
+          </div>
+          <div class="settings-save-note"><i></i><span>主题主色和字体大小会立即生效并自动保存在本机。</span></div>
+        </div>
+        <div class="settings-panel yuvis-config-panel" data-settings-panel="yuvis" hidden>
+          <div class="yuvis-config-intro"><span>Y</span><div><strong>连接你的模型</strong><small>支持 OpenAI Chat Completions 兼容接口和工具调用。</small></div></div>
+          <label class="yuvis-config-field"><span>模型名称</span><input id="assistantModelInput" autocomplete="off" placeholder="例如：gpt-5.2 或本地模型名" /></label>
+          <label class="yuvis-config-field"><span>模型地址</span><input id="assistantBaseUrlInput" autocomplete="off" placeholder="https://api.openai.com/v1" /></label>
+          <label class="yuvis-config-field"><span>API Key</span><input id="assistantApiKeyInput" type="password" autocomplete="new-password" placeholder="输入新的 API Key" /></label>
+          <div class="yuvis-config-status"><span id="assistantKeyStatus">尚未保存 API Key</span><button id="clearAssistantKeyBtn" type="button" hidden>清除密钥</button></div>
+          <button class="yuvis-config-save" id="saveAssistantConfigBtn" type="button">保存 Yuvis 配置</button>
+          <div class="settings-save-note"><i></i><span>API Key 只由主进程读取；Windows 支持时会使用系统加密保护，不会回显到页面。</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="aiDocsModal" hidden>
+    <article class="feature-card ai-docs-card" aria-labelledby="aiDocsModalTitle">
+      <header class="feature-card-header">
+        <div class="feature-card-heading"><span class="feature-card-mark ai">AI</span><div><small>YUVIS INTEGRATION</small><h3 id="aiDocsModalTitle">AI 对接文档</h3><p>查看模型可以操作的软件功能与工具接口。</p></div></div>
+        <button class="modal-close" data-close-modal aria-label="关闭 AI 对接文档"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="feature-card-scroll ai-docs-panel">
+        <div class="ai-docs-hero">
+          <span class="ai-docs-mark">AI</span>
+          <div><strong>Yuvis 软件工具协议</strong><p>模型通过 OpenAI Chat Completions 的 tools / tool_calls 机制操作当前播放器。</p></div>
+          <em id="aiToolCount">25 个接口</em>
+        </div>
+        <div class="ai-docs-flow" aria-label="AI 对接流程">
+          <span><b>1</b>用户发出指令</span><i>→</i><span><b>2</b>模型选择工具</span><i>→</i><span><b>3</b>软件执行并回传</span>
+        </div>
+        <section class="ai-docs-scope">
+          <h4>AI 可以操作的功能</h4>
+          <div class="ai-capability-grid" id="aiCapabilityGrid"></div>
+        </section>
+        <section class="ai-docs-reference">
+          <div class="ai-docs-section-title"><div><h4>接口参考</h4><p>必填参数标有 *；点击接口可查看参数约束。</p></div><span>实时同步当前版本</span></div>
+          <div class="ai-tool-list" id="aiToolList"></div>
+        </section>
+        <div class="ai-docs-note"><strong>安全边界</strong><span>这些接口只读写当前 Yuvis 音乐播放器的本地状态，不提供任意文件、命令或系统控制能力。</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="modal-backdrop" id="shortcutsModal" hidden>
+    <article class="feature-card shortcuts-card" aria-labelledby="shortcutsModalTitle">
+      <header class="feature-card-header">
+        <div class="feature-card-heading"><span class="feature-card-mark"><svg viewBox="0 0 24 24"><path d="M5 7h14v10H5zM8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><div><small>KEYBOARD CONTROL</small><h3 id="shortcutsModalTitle">快捷键</h3><p>无需离开当前界面即可快速控制播放与搜索。</p></div></div>
+        <button class="modal-close" data-close-modal aria-label="关闭快捷键页面"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="feature-card-scroll shortcuts-panel">
+        <div class="shortcut-row"><span><strong>播放 / 暂停</strong><small>切换当前音乐的播放状态</small></span><kbd>Space</kbd></div>
+        <div class="shortcut-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><kbd>Ctrl</kbd><b>+</b><kbd>K</kbd></div>
+        <div class="reserved-inline"><i></i>自定义快捷键入口已预留</div>
+      </div>
+    </article>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <audio id="audio"></audio>
+  <script src="renderer.js"></script>
+</body>
+</html>

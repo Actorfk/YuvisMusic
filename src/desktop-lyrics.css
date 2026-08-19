@@ -1,0 +1,53 @@
+:root {
+  --primary-color: #ff3156;
+  --secondary-color: #ffffff;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+body { font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; user-select: none; }
+.lyrics-shell { height: 100%; padding: 31px 56px 20px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: move; -webkit-app-region: no-drag; }
+.lyrics-shell::before { content: ""; position: absolute; inset: 15px 18px 10px; border-radius: 22px; background: rgba(12, 12, 14, .06); border: 1px solid rgba(255,255,255,.05); opacity: 0; transition: opacity .18s; backdrop-filter: blur(16px); }
+.lyrics-shell::after { content: ""; position: absolute; z-index: 3; inset: 7px; border: 1px dashed rgba(255,49,86,.92); border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 0 0 1px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .16s; }
+.lyrics-shell:hover::before, .lyrics-shell.show-bounds::before { opacity: 1; }
+.lyrics-shell.show-bounds::after { opacity: 1; }
+.hover-toolbar { position: absolute; z-index: 2; top: 17px; right: 27px; left: 29px; height: 27px; display: flex; align-items: center; justify-content: flex-end; color: rgba(255,255,255,.72); opacity: 0; transition: opacity .18s; }
+.lyrics-shell:hover .hover-toolbar, .lyrics-shell.show-bounds .hover-toolbar { z-index: 4; opacity: 1; }
+.drag-hint { margin-right: auto; font-size: 11px; letter-spacing: .04em; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.toolbar-actions { display: flex; gap: 5px; -webkit-app-region: no-drag; }
+.hover-toolbar button { -webkit-app-region: no-drag; width: 27px; height: 27px; padding: 0; border: 0; border-radius: 8px; color: #fff; background: rgba(12,12,14,.48); font-size: 20px; line-height: 24px; cursor: pointer; }
+.hover-toolbar button:hover { background: #cf0a2c; }
+.hover-toolbar #lockLyricsBtn { font-size: 10px; font-weight: 700; }
+.hover-toolbar #lockLyricsBtn.active { color: #fff; background: #cf0a2c; }
+body[data-locked="true"] .lyrics-shell { cursor: default; }
+body[data-locked="true"] .lyrics-shell.show-bounds::after { border-style: solid; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 0 0 2px rgba(207,10,44,.25); }
+.song-context { position: relative; z-index: 1; display: flex; gap: 8px; align-items: center; max-width: 80%; margin-bottom: 3px; color: rgba(255,255,255,.72); font-size: 11px; letter-spacing: .04em; text-shadow: 0 2px 6px rgba(0,0,0,.9); opacity: 0; transform: translateY(3px); transition: opacity .18s, transform .18s; }
+.lyrics-shell:hover .song-context { opacity: 1; transform: translateY(0); }
+.song-context strong, .song-context span { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-context span::before { content: "·"; margin-right: 8px; }
+.primary-line, .secondary-line { position: relative; z-index: 1; max-width: 100%; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; font-weight: 750; letter-spacing: .015em; text-shadow: 0 2px 3px rgba(0,0,0,.95), 0 0 9px rgba(0,0,0,.8), 0 3px 18px rgba(0,0,0,.62); }
+.primary-line { color: var(--primary-color); font-size: clamp(25px, 3.1vw, 38px); line-height: 1.25; }
+.secondary-line { color: var(--secondary-color); margin-top: 4px; font-size: clamp(17px, 2.1vw, 25px); line-height: 1.2; opacity: .96; }
+.secondary-line[hidden] { display: none; }
+body[data-lyric-style="plain"] .lyrics-shell::before { background: transparent; border-color: transparent; backdrop-filter: none; }
+body[data-lyric-style="plain"] .primary-line, body[data-lyric-style="plain"] .secondary-line { background: transparent; text-shadow: none; -webkit-text-stroke: 0; }
+body[data-lyric-style="outline"] .primary-line, body[data-lyric-style="outline"] .secondary-line { -webkit-text-stroke: 1px rgba(0,0,0,.82); text-shadow: 0 1px 2px #000, 0 2px 5px rgba(0,0,0,.9); }
+body[data-lyric-style="soft"] .primary-line, body[data-lyric-style="soft"] .secondary-line { padding: 2px 20px 4px; border-radius: 14px; background: rgba(12,12,14,.28); backdrop-filter: blur(8px); text-shadow: 0 2px 12px rgba(0,0,0,.8); }
+
+.lyrics-context-menu { position: fixed; z-index: 20; width: 148px; padding: 5px; border: 1px solid rgba(255,255,255,.15); border-radius: 11px; color: #f7f7f8; background: rgba(22,22,25,.94); box-shadow: 0 12px 30px rgba(0,0,0,.42); backdrop-filter: blur(18px); -webkit-app-region: no-drag; }
+.lyrics-context-menu[hidden] { display: none; }
+.context-menu-item, .context-submenu button { width: 100%; min-height: 30px; padding: 0 9px; border: 0; border-radius: 7px; color: inherit; background: transparent; font: 12px/1 "Segoe UI", "Microsoft YaHei", sans-serif; text-align: left; cursor: pointer; }
+.context-menu-item { display: flex; align-items: center; justify-content: space-between; }
+.context-menu-item:hover, .context-menu-item:focus-visible, .context-submenu button:hover, .context-submenu button:focus-visible { outline: 0; background: rgba(255,255,255,.1); }
+.context-close-item:hover, .context-close-item:focus-visible { color: #fff; background: rgba(207,10,44,.72); }
+.context-menu-item kbd { min-width: 20px; padding: 3px 4px; border: 0; border-radius: 5px; color: rgba(255,255,255,.58); background: rgba(255,255,255,.08); font: 10px/1 "Microsoft YaHei", sans-serif; text-align: center; }
+.context-menu-item b { color: rgba(255,255,255,.55); font-size: 17px; font-weight: 400; }
+.context-submenu-host { position: relative; }
+.locked-menu .context-submenu-host { display: none; }
+.context-submenu { position: absolute; left: 100%; top: 50%; display: none; width: 128px; padding: 5px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(22,22,25,.96); box-shadow: 0 10px 26px rgba(0,0,0,.4); transform: translateY(-50%); }
+.context-submenu-host:hover .context-submenu, .context-submenu-host:focus-within .context-submenu { display: block; }
+.lyrics-context-menu.open-left .context-submenu { right: 100%; left: auto; }
+.lyrics-context-menu.lower-submenus .context-submenu { top: auto; bottom: -5px; transform: none; }
+.context-submenu button { position: relative; display: flex; gap: 8px; align-items: center; padding-right: 22px; }
+.context-submenu button.active::after { content: "✓"; position: absolute; right: 8px; color: #ff5572; font-weight: 700; }
+.color-submenu button i { flex: 0 0 auto; width: 15px; height: 15px; border: 1px solid rgba(255,255,255,.34); border-radius: 50%; background: linear-gradient(135deg, var(--a) 0 50%, var(--b) 50% 100%); box-shadow: 0 1px 3px rgba(0,0,0,.35); }

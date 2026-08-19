@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';" />
+  <title>Yuvis音乐 · 桌面歌词</title>
+  <link rel="stylesheet" href="desktop-lyrics.css" />
+</head>
+<body>
+  <main class="lyrics-shell" aria-live="polite">
+    <div class="hover-toolbar">
+      <span class="drag-hint" id="dragHint">Yuvis音乐 · 拖动调整位置</span>
+      <div class="toolbar-actions">
+        <button id="lockLyricsBtn" aria-label="锁定桌面歌词" title="锁定桌面歌词"><span id="lockLyricsIcon">锁</span></button>
+        <button id="closeLyricsBtn" aria-label="关闭桌面歌词" title="关闭桌面歌词">×</button>
+      </div>
+    </div>
+    <div class="song-context"><strong id="songTitle">Yuvis音乐</strong><span id="songArtist">桌面歌词</span></div>
+    <p class="primary-line" id="primaryLine">播放音乐后将在这里显示歌词</p>
+    <p class="secondary-line" id="secondaryLine">支持双层歌词显示</p>
+  </main>
+  <nav class="lyrics-context-menu" id="lyricsContextMenu" aria-label="桌面歌词菜单" hidden>
+    <button class="context-menu-item" id="contextLockBtn"><span>锁定</span><kbd>锁</kbd></button>
+    <button class="context-menu-item context-close-item" id="contextCloseBtn"><span>关闭</span><kbd>×</kbd></button>
+    <div class="context-submenu-host">
+      <button class="context-menu-item"><span>歌词样式</span><b>›</b></button>
+      <div class="context-submenu style-submenu" aria-label="歌词样式">
+        <button data-context-style="plain">纯文字</button>
+        <button data-context-style="classic">经典</button>
+        <button data-context-style="outline">描边</button>
+        <button data-context-style="soft">柔光</button>
+      </div>
+    </div>
+    <div class="context-submenu-host">
+      <button class="context-menu-item"><span>歌词颜色</span><b>›</b></button>
+      <div class="context-submenu color-submenu" aria-label="歌词颜色">
+        <button data-context-colors="#ff3156,#ffffff"><i style="--a:#ff3156;--b:#ffffff"></i>一点红</button>
+        <button data-context-colors="#ffb300,#ffffff"><i style="--a:#ffb300;--b:#ffffff"></i>琥珀黄</button>
+        <button data-context-colors="#4cc9f0,#ffffff"><i style="--a:#4cc9f0;--b:#ffffff"></i>天空蓝</button>
+        <button data-context-colors="#8bffb0,#ffffff"><i style="--a:#8bffb0;--b:#ffffff"></i>薄荷绿</button>
+        <button data-context-colors="#ffffff,#c9c9cf"><i style="--a:#ffffff;--b:#c9c9cf"></i>纯白</button>
+      </div>
+    </div>
+  </nav>
+  <script src="desktop-lyrics.js"></script>
+</body>
+</html>
