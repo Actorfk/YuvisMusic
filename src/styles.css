@@ -740,6 +740,20 @@ body.is-playing .play-button .pause-icon { display: block; }
 .repeat-options button.active { color: var(--red); border-color: rgba(var(--accent-rgb),.32); background: var(--red-soft); font-weight: 650; }
 .settings-save-note { min-height: 48px; margin-top: 18px; padding: 10px 12px; display: flex; align-items: center; gap: 9px; border-radius: 11px; color: #858387; background: #f6f5f3; font-size: 11px; line-height: 1.5; }
 .settings-save-note i, .reserved-inline i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.08); }
+.shortcut-settings-panel { padding-top: 20px; }
+.shortcut-setting-list { margin-top: 11px; border-top: 1px solid var(--line); }
+.shortcut-setting-row { min-height: 72px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--line); }
+.shortcut-setting-row > span { min-width: 0; margin-right: auto; }
+.shortcut-setting-row strong, .shortcut-setting-row small { display: block; }
+.shortcut-setting-row strong { color: var(--ink); font-size: 13px; }
+.shortcut-setting-row small { margin-top: 4px; color: #999; font-size: 10px; font-weight: 400; }
+.shortcut-setting-row button { min-width: 116px; max-width: 210px; height: 36px; padding: 0 12px; overflow: hidden; border: 1px solid #d8d5d2; border-bottom-width: 2px; border-radius: 9px; color: #656368; background: #faf9f7; font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; transition: .16s; }
+.shortcut-setting-row button:hover, .shortcut-setting-row button:focus { color: var(--red); border-color: rgba(var(--accent-rgb),.35); background: var(--red-soft); outline: 0; }
+.shortcut-setting-row button.recording { min-width: 145px; color: var(--red); border-color: var(--red); background: var(--red-soft); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.08); }
+.shortcut-settings-actions { min-height: 49px; display: flex; align-items: center; gap: 14px; }
+.shortcut-settings-actions span { margin-right: auto; color: #aaa; font-size: 10px; }
+.shortcut-settings-actions button { flex: none; height: 31px; padding: 0 11px; border-radius: 8px; color: #777; background: #f3f2f0; font-size: 10px; }
+.shortcut-settings-actions button:hover { color: var(--red); background: var(--red-soft); }
 .appearance-panel { padding-top: 20px; }
 .appearance-theme-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
 .appearance-theme-options button { height: 52px; padding: 0 12px; display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 12px; color: #6f6d71; background: #fff; font-size: 12px; transition: .18s; }
@@ -839,9 +853,13 @@ body.is-playing .play-button .pause-icon { display: block; }
 .shortcut-row span strong, .shortcut-row span small { display: block; }
 .shortcut-row span strong { font-size: 12px; }
 .shortcut-row span small { margin-top: 4px; color: #999; font-size: 9px; font-weight: 400; }
+.shortcut-keys { flex: none; display: flex; align-items: center; }
 .shortcut-row kbd { min-width: 31px; height: 26px; padding: 0 8px; display: grid; place-items: center; border: 1px solid #d8d5d2; border-bottom-width: 2px; border-radius: 7px; color: #666; background: #faf9f7; font-family: inherit; font-size: 10px; }
 .shortcut-row b { margin: 0 6px; color: #aaa; font-weight: 400; }
 .reserved-inline { margin-top: 22px; padding: 14px; display: flex; align-items: center; gap: 10px; border-radius: 11px; color: #888; background: #f6f5f3; font-size: 11px; }
+.reserved-inline span { margin-right: auto; }
+.reserved-inline button { flex: none; height: 29px; padding: 0 10px; border-radius: 8px; color: var(--red); background: #fff; font-size: 10px; font-weight: 650; box-shadow: 0 3px 10px rgba(30,25,25,.05); }
+.reserved-inline button:hover { background: var(--red-soft); }
 @keyframes modalFade { from { opacity: 0; } }
 @keyframes modalRise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes trackPlayingBar { from { height: 3px; opacity: .62; } to { height: 14px; opacity: 1; } }
