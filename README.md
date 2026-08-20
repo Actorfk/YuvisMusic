@@ -37,7 +37,7 @@ npm install
 npm start
 ```
 
-快捷键：`Space` 播放/暂停，`Ctrl+K` 聚焦搜索。
+快捷键：`Ctrl+←` 上一曲，`Space` 播放/暂停，`Ctrl+→` 下一曲，`Ctrl+K` 聚焦搜索；同时支持键盘媒体控制键。
 
 ## Windows 打包
 

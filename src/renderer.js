@@ -2503,8 +2503,32 @@ document.addEventListener('keydown', (event) => {
     else if (state.playerOpen) closeNowPlayingPage();
   }
   if (event.ctrlKey && event.key.toLowerCase() === 'k') { event.preventDefault(); $('#searchInput').focus(); }
-  if (event.code === 'Space' && !document.activeElement.matches('input, button, select, textarea')) { event.preventDefault(); togglePlay(); }
+  const isInteractive = document.activeElement.matches('input, button, select, textarea, [contenteditable="true"]');
+  const isMediaKey = ['MediaPlayPause', 'MediaTrackPrevious', 'MediaTrackNext'].includes(event.code);
+  if ((!isMediaKey && isInteractive) || event.repeat) return;
+  if (event.code === 'Space' || event.code === 'MediaPlayPause') {
+    event.preventDefault();
+    togglePlay();
+  } else if (event.code === 'MediaTrackPrevious' || (event.ctrlKey && !event.altKey && !event.shiftKey && event.key === 'ArrowLeft')) {
+    event.preventDefault();
+    nextTrack(-1);
+  } else if (event.code === 'MediaTrackNext' || (event.ctrlKey && !event.altKey && !event.shiftKey && event.key === 'ArrowRight')) {
+    event.preventDefault();
+    nextTrack(1);
+  }
 });
+
+if ('mediaSession' in navigator) {
+  const mediaActions = {
+    play: () => state.currentId ? attemptPlayback() : togglePlay(),
+    pause: () => audio.pause(),
+    previoustrack: () => nextTrack(-1),
+    nexttrack: () => nextTrack(1)
+  };
+  Object.entries(mediaActions).forEach(([action, handler]) => {
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch { /* Unsupported media action. */ }
+  });
+}
 
 function seekFromRange(range) {
   if (Number.isFinite(audio.duration)) {
@@ -2525,6 +2549,7 @@ $('#muteBtn').addEventListener('click', () => {
 });
 audio.addEventListener('play', () => {
   document.body.classList.add('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   const track = currentTrack();
   if (track) {
     const clearedFailure = state.failedTracks.delete(track.id);
@@ -2543,7 +2568,13 @@ audio.addEventListener('play', () => {
   renderLibrary();
   runLyricClock();
 });
-audio.addEventListener('pause', () => { document.body.classList.remove('is-playing'); renderLibrary(); stopLyricClock(); updateLyricPosition(audio.currentTime); });
+audio.addEventListener('pause', () => {
+  document.body.classList.remove('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  renderLibrary();
+  stopLyricClock();
+  updateLyricPosition(audio.currentTime);
+});
 audio.addEventListener('error', () => showPlaybackFailure(currentTrack(), audio.error));
 audio.addEventListener('loadedmetadata', () => {
   $('#totalTime').textContent = formatTime(audio.duration);
