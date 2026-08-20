@@ -52,12 +52,13 @@ Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'build')
 Write-Host '[4/6] Building portable ZIP...'
 Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'build:portable')
 
-$installerPath = Join-Path $projectRoot "dist\Yuvis-Music-$($package.version)-x64.exe"
+$versionOutput = Join-Path $projectRoot "dist\$($package.version)"
+$installerPath = Join-Path $versionOutput "Yuvis-Music-$($package.version)-x64.exe"
 $portableName = "Yuvis-Music-$($package.version)-x64-Portable"
-$portableDirectory = Join-Path $projectRoot "dist\$portableName"
+$portableDirectory = Join-Path $versionOutput $portableName
 $applicationExecutableName = "$($package.build.productName).exe"
 $portableExecutable = Join-Path $portableDirectory $applicationExecutableName
-$portableArchive = Join-Path $projectRoot "dist\$portableName.zip"
+$portableArchive = Join-Path $versionOutput "$portableName.zip"
 foreach ($artifactPath in @($installerPath, $portableExecutable, $portableArchive)) {
   if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
     throw "Expected artifact was not created: $artifactPath"

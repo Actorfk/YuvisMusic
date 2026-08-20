@@ -5,13 +5,14 @@ Set-Location -LiteralPath $projectRoot
 $npmExecutable = (Get-Command npm.cmd -ErrorAction Stop).Source
 $package = Get-Content -Raw -Encoding utf8 -LiteralPath 'package.json' | ConvertFrom-Json
 $distRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'dist'))
+$versionOutput = [IO.Path]::GetFullPath((Join-Path $distRoot $package.version))
 $buildOutput = [IO.Path]::GetFullPath((Join-Path $distRoot "portable-build-$PID"))
 $unpackedSource = Join-Path $buildOutput 'win-unpacked'
 $portableName = "Yuvis-Music-$($package.version)-x64-Portable"
-$portableDirectory = [IO.Path]::GetFullPath((Join-Path $distRoot $portableName))
-$portableArchive = [IO.Path]::GetFullPath((Join-Path $distRoot "$portableName.zip"))
+$portableDirectory = [IO.Path]::GetFullPath((Join-Path $versionOutput $portableName))
+$portableArchive = [IO.Path]::GetFullPath((Join-Path $versionOutput "$portableName.zip"))
 
-foreach ($target in @($buildOutput, $portableDirectory, $portableArchive)) {
+foreach ($target in @($versionOutput, $buildOutput, $portableDirectory, $portableArchive)) {
   if (-not $target.StartsWith("$distRoot$([IO.Path]::DirectorySeparatorChar)", [StringComparison]::OrdinalIgnoreCase)) {
     throw "Portable output escaped dist directory: $target"
   }
@@ -39,6 +40,7 @@ if (-not $sourceExecutable) {
 if (Test-Path -LiteralPath $portableDirectory) {
   Remove-Item -LiteralPath $portableDirectory -Recurse -Force
 }
+New-Item -ItemType Directory -Path $versionOutput -Force | Out-Null
 New-Item -ItemType Directory -Path $portableDirectory | Out-Null
 Copy-Item -Path (Join-Path $unpackedSource '*') -Destination $portableDirectory -Recurse -Force
 
