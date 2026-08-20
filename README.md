@@ -47,7 +47,7 @@ npm run icon
 npm run build
 ```
 
-安装包会输出到 `dist/Yuvis-Music-1.0.0-x64.exe`。如只需要免安装目录，可执行 `npm run pack`。
+安装包会输出到 `dist/Yuvis-Music-1.0.3-x64.exe`，使用系统级安装并在 Windows“控制面板 → 程序和功能”中注册卸载入口。如只需要免安装版本，可使用 Portable EXE。
 
 ## 修改留档
 
