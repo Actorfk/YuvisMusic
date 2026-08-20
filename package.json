@@ -12,8 +12,9 @@
     "check": "node --check src/main.js && node --check src/preload.js && node --check src/desktop-lyrics-preload.js && node --check src/desktop-lyrics.js && node --check src/renderer.js",
     "checkpoint": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/checkpoint.ps1",
     "pack": "electron-builder --dir",
-    "build": "electron-builder --win nsis",
-    "build:portable": "electron-builder --win portable"
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-installer.ps1",
+    "build:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable-zip.ps1",
+    "build:portable:single-exe": "electron-builder --win portable --config.artifactName=Yuvis-Music-${version}-${arch}-Portable-Single.${ext}"
   },
   "devDependencies": {
     "electron": "^43.4.0",
