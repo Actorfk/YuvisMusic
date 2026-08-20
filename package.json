@@ -1,9 +1,9 @@
 {
   "name": "yuvis-music",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Yuvis音乐 - 一款克制、专注的 Windows 本地音乐播放器",
   "main": "src/main.js",
-  "author": "",
+  "author": "Yuvis",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -12,8 +12,9 @@
     "check": "node --check src/main.js && node --check src/preload.js && node --check src/desktop-lyrics-preload.js && node --check src/desktop-lyrics.js && node --check src/renderer.js",
     "checkpoint": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/checkpoint.ps1",
     "pack": "electron-builder --dir",
-    "build": "electron-builder --win nsis",
-    "build:portable": "electron-builder --win portable"
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-installer.ps1",
+    "build:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable-zip.ps1",
+    "build:portable:single-exe": "electron-builder --win portable --config.artifactName=Yuvis-Music-${version}-${arch}-Portable-Single.${ext}"
   },
   "devDependencies": {
     "electron": "^43.4.0",
@@ -44,10 +45,12 @@
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
       "oneClick": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Yuvis音乐"
+      "shortcutName": "Yuvis音乐",
+      "uninstallDisplayName": "Yuvis音乐"
     }
   }
 }

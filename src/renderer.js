@@ -17,6 +17,14 @@ const FONT_SIZE_OPTIONS = {
   extraLarge: 1.2
 };
 
+const SHORTCUT_ACTIONS = {
+  previous: { label: '上一曲', defaultShortcut: { code: 'ArrowLeft', ctrl: true, alt: false, shift: false, meta: false } },
+  togglePlayback: { label: '播放 / 暂停', defaultShortcut: { code: 'Space', ctrl: false, alt: false, shift: false, meta: false } },
+  next: { label: '下一曲', defaultShortcut: { code: 'ArrowRight', ctrl: true, alt: false, shift: false, meta: false } },
+  search: { label: '聚焦搜索', defaultShortcut: { code: 'KeyK', ctrl: true, alt: false, shift: false, meta: false } }
+};
+const SHORTCUT_MODIFIER_CODES = new Set(['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight']);
+
 const ASSISTANT_SYSTEM_PROMPT = `你是 Yuvis 音乐播放器里的中文助手。你可以通过工具读取本地音乐状态并控制播放器。
 需要操作或查询软件时必须使用工具，不要假装操作成功。工具只影响用户本机的播放器。
 回答应自然、简洁；执行操作后说明结果。不要声称能访问工具没有返回的信息。`;
@@ -72,6 +80,7 @@ const BUILTIN_EQUALIZER_PRESETS = {
 let equalizerAudioContext = null;
 let equalizerSourceNode = null;
 let equalizerFilterNodes = [];
+let recordingShortcutAction = null;
 const scalableFontRules = new Map();
 
 function readStorage(key, fallback) {
@@ -91,6 +100,35 @@ function readArrayStorage(key) {
 function readObjectStorage(key, fallback = {}) {
   const value = readStorage(key, fallback);
   return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+}
+
+function shortcutSignature(shortcut) {
+  return [shortcut.ctrl ? '1' : '0', shortcut.alt ? '1' : '0', shortcut.shift ? '1' : '0', shortcut.meta ? '1' : '0', shortcut.code].join(':');
+}
+
+function normalizeShortcut(value, fallback) {
+  if (typeof value?.code !== 'string' || !/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(value.code)) return { ...fallback };
+  return {
+    code: value.code,
+    ctrl: Boolean(value.ctrl),
+    alt: Boolean(value.alt),
+    shift: Boolean(value.shift),
+    meta: Boolean(value.meta)
+  };
+}
+
+function defaultKeyboardShortcuts() {
+  return Object.fromEntries(Object.entries(SHORTCUT_ACTIONS).map(([action, config]) => [action, { ...config.defaultShortcut }]));
+}
+
+function normalizeKeyboardShortcuts(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const shortcuts = Object.fromEntries(Object.entries(SHORTCUT_ACTIONS).map(([action, config]) => [
+    action,
+    normalizeShortcut(source[action], config.defaultShortcut)
+  ]));
+  const signatures = Object.values(shortcuts).map(shortcutSignature);
+  return new Set(signatures).size === signatures.length ? shortcuts : defaultKeyboardShortcuts();
 }
 
 function normalizePlaylists(value) {
@@ -176,6 +214,7 @@ const state = {
     theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson',
     fontSize: Object.hasOwn(FONT_SIZE_OPTIONS, savedAppearanceSettings.fontSize) ? savedAppearanceSettings.fontSize : 'standard'
   },
+  keyboardShortcuts: normalizeKeyboardShortcuts(savedAppSettings.keyboardShortcuts),
   equalizerSettings: {
     enabled: Boolean(savedEqualizerSettings.enabled),
     gains: normalizeEqualizerGains(savedEqualizerSettings.gains),
@@ -705,8 +744,65 @@ function persistAppSettings() {
     appearance: {
       theme: state.appearanceSettings.theme,
       fontSize: state.appearanceSettings.fontSize
-    }
+    },
+    keyboardShortcuts: state.keyboardShortcuts
   }));
+}
+
+function shortcutKeyLabel(code) {
+  const labels = {
+    Space: 'Space', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓',
+    Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
+    Home: 'Home', End: 'End', PageUp: 'Page Up', PageDown: 'Page Down',
+    Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\',
+    Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backquote: '`'
+  };
+  if (labels[code]) return labels[code];
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^Numpad[0-9]$/.test(code)) return `Num ${code.slice(6)}`;
+  return code;
+}
+
+function shortcutParts(shortcut) {
+  return [
+    shortcut.ctrl ? 'Ctrl' : '',
+    shortcut.alt ? 'Alt' : '',
+    shortcut.shift ? 'Shift' : '',
+    shortcut.meta ? 'Win' : '',
+    shortcutKeyLabel(shortcut.code)
+  ].filter(Boolean);
+}
+
+function shortcutText(shortcut) {
+  return shortcutParts(shortcut).join(' + ');
+}
+
+function shortcutHtml(shortcut) {
+  return shortcutParts(shortcut).map((part) => `<kbd>${escapeHtml(part)}</kbd>`).join('<b>+</b>');
+}
+
+function renderKeyboardShortcuts() {
+  Object.keys(SHORTCUT_ACTIONS).forEach((action) => {
+    const shortcut = state.keyboardShortcuts[action];
+    const recorder = $(`[data-shortcut-action="${action}"]`);
+    if (recorder) {
+      const recording = recordingShortcutAction === action;
+      recorder.classList.toggle('recording', recording);
+      recorder.textContent = recording ? '请按下组合键…' : shortcutText(shortcut);
+      recorder.setAttribute('aria-pressed', String(recording));
+    }
+    const display = $(`[data-shortcut-display="${action}"]`);
+    if (display) display.innerHTML = shortcutHtml(shortcut);
+  });
+}
+
+function resetKeyboardShortcuts() {
+  recordingShortcutAction = null;
+  state.keyboardShortcuts = defaultKeyboardShortcuts();
+  persistAppSettings();
+  renderKeyboardShortcuts();
+  showToast('快捷键已恢复默认');
 }
 
 function renderAppearanceSettings() {
@@ -892,6 +988,7 @@ function applyPlaybackSettings() {
 function showSettingsSection(section) {
   const names = {
     playback: ['播放设置', '控制音量与默认播放行为'],
+    shortcuts: ['快捷键', '自定义播放器的键盘组合键'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
     fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
@@ -914,6 +1011,7 @@ function openSettings(section = 'playback') {
   renderDesktopLyricsSettings();
   renderFullscreenLyricsSettings();
   renderAppearanceSettings();
+  renderKeyboardShortcuts();
   renderAssistantConfig();
   showSettingsSection(section);
   openModal($('#settingsModal'));
@@ -2156,6 +2254,54 @@ $('.settings-sidebar nav').addEventListener('click', (event) => {
   const button = event.target.closest('[data-settings-section]');
   if (button) showSettingsSection(button.dataset.settingsSection);
 });
+$('.shortcut-setting-list').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-shortcut-action]');
+  if (!button) return;
+  recordingShortcutAction = button.dataset.shortcutAction;
+  renderKeyboardShortcuts();
+  button.focus();
+});
+$('.shortcut-setting-list').addEventListener('keydown', (event) => {
+  const button = event.target.closest('[data-shortcut-action]');
+  if (!button || recordingShortcutAction !== button.dataset.shortcutAction) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.key === 'Escape') {
+    recordingShortcutAction = null;
+    renderKeyboardShortcuts();
+    return;
+  }
+  if (event.repeat || SHORTCUT_MODIFIER_CODES.has(event.code)) return;
+  if (!event.code || event.code === 'Unidentified' || event.code.startsWith('Media')) {
+    showToast('媒体控制键已固定启用，请按其他组合键');
+    return;
+  }
+  const shortcut = {
+    code: event.code,
+    ctrl: event.ctrlKey,
+    alt: event.altKey,
+    shift: event.shiftKey,
+    meta: event.metaKey
+  };
+  const duplicate = Object.entries(state.keyboardShortcuts).find(([action, current]) => (
+    action !== recordingShortcutAction && shortcutSignature(current) === shortcutSignature(shortcut)
+  ));
+  if (duplicate) {
+    showToast(`该组合键已用于“${SHORTCUT_ACTIONS[duplicate[0]].label}”`);
+    return;
+  }
+  state.keyboardShortcuts[recordingShortcutAction] = shortcut;
+  recordingShortcutAction = null;
+  persistAppSettings();
+  renderKeyboardShortcuts();
+  showToast('快捷键已更新');
+});
+$('.shortcut-setting-list').addEventListener('focusout', (event) => {
+  if (!event.target.closest('[data-shortcut-action]') || !recordingShortcutAction) return;
+  recordingShortcutAction = null;
+  renderKeyboardShortcuts();
+});
+$('#resetShortcutsBtn').addEventListener('click', resetKeyboardShortcuts);
 $('#settingsVolumeBar').addEventListener('input', (event) => {
   state.volume = Number(event.target.value);
   state.muted = false;
@@ -2211,8 +2357,10 @@ $('#aiDocsTitleBtn').addEventListener('click', () => {
 });
 $('#shortcutsTitleBtn').addEventListener('click', () => {
   closeModals();
+  renderKeyboardShortcuts();
   openModal($('#shortcutsModal'));
 });
+$('#openShortcutSettingsBtn').addEventListener('click', () => openSettings('shortcuts'));
 $('#aboutTitleBtn').addEventListener('click', () => {
   closeModals();
   openModal($('#aboutModal'));
@@ -2493,6 +2641,21 @@ document.addEventListener('pointerdown', (event) => {
   }
 });
 
+function eventMatchesShortcut(event, shortcut) {
+  return event.code === shortcut.code
+    && event.ctrlKey === shortcut.ctrl
+    && event.altKey === shortcut.alt
+    && event.shiftKey === shortcut.shift
+    && event.metaKey === shortcut.meta;
+}
+
+function executeKeyboardShortcut(action) {
+  if (action === 'previous') nextTrack(-1);
+  else if (action === 'togglePlayback') togglePlay();
+  else if (action === 'next') nextTrack(1);
+  else if (action === 'search') $('#searchInput').focus();
+}
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     const openModalElement = [...document.querySelectorAll('.modal-backdrop')].find((modal) => !modal.hidden);
@@ -2502,9 +2665,41 @@ document.addEventListener('keydown', (event) => {
     else if (state.fullscreenLyrics) setFullscreenLyrics(false);
     else if (state.playerOpen) closeNowPlayingPage();
   }
-  if (event.ctrlKey && event.key.toLowerCase() === 'k') { event.preventDefault(); $('#searchInput').focus(); }
-  if (event.code === 'Space' && !document.activeElement.matches('input, button, select, textarea')) { event.preventDefault(); togglePlay(); }
+  const isInteractive = document.activeElement.matches('input, button, select, textarea, [contenteditable="true"]');
+  if (event.repeat) return;
+  if (event.code === 'MediaPlayPause') {
+    event.preventDefault();
+    togglePlay();
+    return;
+  }
+  if (event.code === 'MediaTrackPrevious') {
+    event.preventDefault();
+    nextTrack(-1);
+    return;
+  }
+  if (event.code === 'MediaTrackNext') {
+    event.preventDefault();
+    nextTrack(1);
+    return;
+  }
+  if (isInteractive) return;
+  const action = Object.keys(SHORTCUT_ACTIONS).find((shortcutAction) => eventMatchesShortcut(event, state.keyboardShortcuts[shortcutAction]));
+  if (!action) return;
+  event.preventDefault();
+  executeKeyboardShortcut(action);
 });
+
+if ('mediaSession' in navigator) {
+  const mediaActions = {
+    play: () => state.currentId ? attemptPlayback() : togglePlay(),
+    pause: () => audio.pause(),
+    previoustrack: () => nextTrack(-1),
+    nexttrack: () => nextTrack(1)
+  };
+  Object.entries(mediaActions).forEach(([action, handler]) => {
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch { /* Unsupported media action. */ }
+  });
+}
 
 function seekFromRange(range) {
   if (Number.isFinite(audio.duration)) {
@@ -2525,6 +2720,7 @@ $('#muteBtn').addEventListener('click', () => {
 });
 audio.addEventListener('play', () => {
   document.body.classList.add('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   const track = currentTrack();
   if (track) {
     const clearedFailure = state.failedTracks.delete(track.id);
@@ -2543,7 +2739,13 @@ audio.addEventListener('play', () => {
   renderLibrary();
   runLyricClock();
 });
-audio.addEventListener('pause', () => { document.body.classList.remove('is-playing'); renderLibrary(); stopLyricClock(); updateLyricPosition(audio.currentTime); });
+audio.addEventListener('pause', () => {
+  document.body.classList.remove('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  renderLibrary();
+  stopLyricClock();
+  updateLyricPosition(audio.currentTime);
+});
 audio.addEventListener('error', () => showPlaybackFailure(currentTrack(), audio.error));
 audio.addEventListener('loadedmetadata', () => {
   $('#totalTime').textContent = formatTime(audio.duration);

@@ -34,7 +34,6 @@ if (-not $gitExecutable) {
 }
 
 $npmExecutable = (Get-Command npm.cmd -ErrorAction Stop).Source
-$npxExecutable = (Get-Command npx.cmd -ErrorAction Stop).Source
 $package = Get-Content -Raw -Encoding utf8 -LiteralPath 'package.json' | ConvertFrom-Json
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $safeMessage = ($Message -replace '[\\/:*?"<>|]', '-' -replace '\s+', '-').Trim('-')
@@ -50,17 +49,17 @@ Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'check')
 Write-Host '[3/6] Building installer...'
 Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'build')
 
-Write-Host '[4/6] Building portable executable...'
-Invoke-Checked -FilePath $npxExecutable -Arguments @(
-  'electron-builder',
-  '--win',
-  'portable',
-  '--config.artifactName=Yuvis-Music-${version}-${arch}-Portable.${ext}'
-)
+Write-Host '[4/6] Building portable ZIP...'
+Invoke-Checked -FilePath $npmExecutable -Arguments @('run', 'build:portable')
 
-$installerPath = Join-Path $projectRoot "dist\Yuvis-Music-$($package.version)-x64.exe"
-$portablePath = Join-Path $projectRoot "dist\Yuvis-Music-$($package.version)-x64-Portable.exe"
-foreach ($artifactPath in @($installerPath, $portablePath)) {
+$versionOutput = Join-Path $projectRoot "dist\$($package.version)"
+$installerPath = Join-Path $versionOutput "Yuvis-Music-$($package.version)-x64.exe"
+$portableName = "Yuvis-Music-$($package.version)-x64-Portable"
+$portableDirectory = Join-Path $versionOutput $portableName
+$applicationExecutableName = "$($package.build.productName).exe"
+$portableExecutable = Join-Path $portableDirectory $applicationExecutableName
+$portableArchive = Join-Path $versionOutput "$portableName.zip"
+foreach ($artifactPath in @($installerPath, $portableExecutable, $portableArchive)) {
   if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
     throw "Expected artifact was not created: $artifactPath"
   }
@@ -100,14 +99,17 @@ $archiveDirectory = Join-Path $archiveRoot "$timestamp-$safeMessage"
 New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
 
 $archivedInstaller = Join-Path $archiveDirectory (Split-Path -Leaf $installerPath)
-$archivedPortable = Join-Path $archiveDirectory (Split-Path -Leaf $portablePath)
+$archivedPortableDirectory = Join-Path $archiveDirectory $portableName
+$archivedPortableExecutable = Join-Path $archivedPortableDirectory $applicationExecutableName
+$archivedPortableArchive = Join-Path $archiveDirectory (Split-Path -Leaf $portableArchive)
 Copy-Item -LiteralPath $installerPath -Destination $archivedInstaller
-Copy-Item -LiteralPath $portablePath -Destination $archivedPortable
+Copy-Item -LiteralPath $portableDirectory -Destination $archivedPortableDirectory -Recurse
+Copy-Item -LiteralPath $portableArchive -Destination $archivedPortableArchive
 
-$artifacts = @($archivedInstaller, $archivedPortable) | ForEach-Object {
+$artifacts = @($archivedInstaller, $archivedPortableExecutable, $archivedPortableArchive) | ForEach-Object {
   $file = Get-Item -LiteralPath $_
   [ordered]@{
-    name = $file.Name
+    name = $file.FullName.Substring($archiveDirectory.Length + 1)
     sizeBytes = $file.Length
     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash
   }
