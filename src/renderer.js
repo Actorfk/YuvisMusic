@@ -210,7 +210,12 @@ const state = {
   gameLyricsSettings: {
     enabled: Boolean(savedGameLyricsSettings.enabled),
     dualLine: savedGameLyricsSettings.dualLine !== false,
-    fontSize: ['compact', 'standard', 'large'].includes(savedGameLyricsSettings.fontSize) ? savedGameLyricsSettings.fontSize : 'standard'
+    fontSize: ['compact', 'standard', 'large'].includes(savedGameLyricsSettings.fontSize) ? savedGameLyricsSettings.fontSize : 'standard',
+    locked: Boolean(savedGameLyricsSettings.locked),
+    side: ['left', 'right'].includes(savedGameLyricsSettings.side) ? savedGameLyricsSettings.side : 'left',
+    verticalRatio: Number.isFinite(savedGameLyricsSettings.verticalRatio)
+      ? Math.max(0, Math.min(1, savedGameLyricsSettings.verticalRatio))
+      : .5
   },
   fullscreenLyricsSettings: {
     style: FULLSCREEN_LYRIC_STYLES.includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
@@ -974,6 +979,7 @@ function renderGameLyricsSettings() {
   const settings = state.gameLyricsSettings;
   $('#gameLyricsEnabledInput').checked = settings.enabled;
   $('#gameLyricsDualInput').checked = settings.dualLine;
+  $('#gameLyricsLockedInput').checked = settings.locked;
   $('#gameLyricsFontOptions').querySelectorAll('[data-game-lyric-font]').forEach((button) => {
     button.classList.toggle('active', button.dataset.gameLyricFont === settings.fontSize);
   });
@@ -984,7 +990,10 @@ function applyGameLyricsSettings({ updateVisibility = true, notify = false } = {
   renderGameLyricsSettings();
   window.desktop.setGameLyricsSettings({
     dualLine: state.gameLyricsSettings.dualLine,
-    fontSize: state.gameLyricsSettings.fontSize
+    fontSize: state.gameLyricsSettings.fontSize,
+    locked: state.gameLyricsSettings.locked,
+    side: state.gameLyricsSettings.side,
+    verticalRatio: state.gameLyricsSettings.verticalRatio
   });
   if (updateVisibility) window.desktop.setGameLyricsVisible(state.gameLyricsSettings.enabled);
   updateDesktopLyrics();
@@ -1020,7 +1029,7 @@ function showSettingsSection(section) {
     playback: ['播放设置', '控制音量与默认播放行为'],
     shortcuts: ['快捷键', '自定义播放器的键盘组合键'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
-    gameLyrics: ['游戏歌词', '贴合屏幕左侧的透明置顶游戏覆盖层'],
+    gameLyrics: ['游戏歌词', '可拖动并吸附屏幕左右边缘的透明置顶覆盖层'],
     fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
@@ -2499,6 +2508,11 @@ $('#gameLyricsDualInput').addEventListener('change', (event) => {
   state.gameLyricsSettings.dualLine = event.target.checked;
   applyGameLyricsSettings({ updateVisibility: false });
 });
+$('#gameLyricsLockedInput').addEventListener('change', (event) => {
+  state.gameLyricsSettings.locked = event.target.checked;
+  applyGameLyricsSettings({ updateVisibility: false });
+  showToast(event.target.checked ? '游戏歌词已锁定' : '游戏歌词已解锁');
+});
 $('#gameLyricsFontOptions').addEventListener('click', (event) => {
   const button = event.target.closest('[data-game-lyric-font]');
   if (!button || !['compact', 'standard', 'large'].includes(button.dataset.gameLyricFont)) return;
@@ -2849,6 +2863,16 @@ window.desktop.onGameLyricsVisibility((visible) => {
   if (state.gameLyricsSettings.enabled === visible) return;
   state.gameLyricsSettings.enabled = visible;
   applyGameLyricsSettings({ updateVisibility: false });
+});
+window.desktop.onGameLyricsSettings((settings) => {
+  if (!settings || typeof settings !== 'object') return;
+  const wasLocked = state.gameLyricsSettings.locked;
+  state.gameLyricsSettings = { ...state.gameLyricsSettings, ...settings };
+  persistAppSettings();
+  renderGameLyricsSettings();
+  if (wasLocked !== state.gameLyricsSettings.locked) {
+    showToast(state.gameLyricsSettings.locked ? '游戏歌词已锁定' : '游戏歌词已解锁');
+  }
 });
 
 async function init() {

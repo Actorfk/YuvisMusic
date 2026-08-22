@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('desktop', {
   updateGameLyrics: (payload) => ipcRenderer.send('game-lyrics:update', payload),
   setGameLyricsSettings: (settings) => ipcRenderer.send('game-lyrics:set-settings', settings),
   onGameLyricsVisibility: (callback) => ipcRenderer.on('game-lyrics:visibility', (_event, value) => callback(value)),
+  onGameLyricsSettings: (callback) => ipcRenderer.on('game-lyrics:settings-updated', (_event, value) => callback(value)),
   minimize: () => ipcRenderer.send('window:minimize'),
   toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
   setFullscreen: (fullscreen) => ipcRenderer.invoke('window:set-fullscreen', fullscreen),

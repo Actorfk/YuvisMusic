@@ -427,11 +427,12 @@
         <div class="settings-panel game-lyrics-panel" data-settings-panel="gameLyrics" hidden>
           <div class="game-overlay-preview" aria-hidden="true">
             <div class="game-overlay-scene"><i></i><i></i><i></i></div>
-            <div class="game-overlay-sample"><small>YUVIS · 游戏歌词</small><strong>沉浸游戏，也不错过这一句</strong><span>透明覆盖 · 最高置顶 · 鼠标穿透</span></div>
+            <div class="game-overlay-sample"><small>YUVIS · 游戏歌词</small><strong>沉浸游戏，也不错过这一句</strong><span>拖动吸附 · 右击锁定 · 滚动换行</span></div>
           </div>
           <div class="setting-list compact-setting-list">
-            <label class="setting-row"><span><strong>显示游戏歌词</strong><small>固定在主屏幕最左侧，覆盖在游戏画面上方</small></span><input id="gameLyricsEnabledInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>显示游戏歌词</strong><small>拖动后自动吸附到当前屏幕左侧或右侧</small></span><input id="gameLyricsEnabledInput" class="switch-input" type="checkbox" /></label>
             <label class="setting-row"><span><strong>双层歌词</strong><small>优先显示翻译，没有翻译时显示下一句</small></span><input id="gameLyricsDualInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>锁定游戏歌词</strong><small>禁止拖动；仍可在歌词上右击解锁</small></span><input id="gameLyricsLockedInput" class="switch-input" type="checkbox" /></label>
           </div>
           <div class="setting-block game-lyrics-font-block">
             <span class="setting-label">覆盖层字号</span>
@@ -441,7 +442,7 @@
               <button data-game-lyric-font="large">大字</button>
             </div>
           </div>
-          <div class="settings-save-note"><i></i><span>覆盖层背景透明、始终最高置顶并穿透鼠标，不会抢走游戏焦点；无边框窗口化游戏兼容性最佳。</span></div>
+          <div class="settings-save-note"><i></i><span>覆盖层背景透明、始终最高置顶且不会抢走键盘焦点；右击歌词可锁定、切换吸附边或关闭。</span></div>
         </div>
 
         <div class="settings-panel fullscreen-lyrics-panel" data-settings-panel="fullscreenLyrics" hidden>

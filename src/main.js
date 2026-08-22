@@ -16,6 +16,8 @@ let desktopLyricsDragState = null;
 let gameLyricsWindow;
 let gameLyricsVisible = false;
 let gameLyricsPayload = null;
+let gameLyricsDragState = null;
+let gameLyricsDisplayId = null;
 let assistantConfigCache = null;
 let desktopLyricsSettings = {
   dualLine: true,
@@ -26,7 +28,10 @@ let desktopLyricsSettings = {
 };
 let gameLyricsSettings = {
   dualLine: true,
-  fontSize: 'standard'
+  fontSize: 'standard',
+  locked: false,
+  side: 'left',
+  verticalRatio: .5
 };
 
 function assistantConfigPath() {
@@ -236,13 +241,15 @@ function setDesktopLyricsVisible(visible) {
   }
 }
 
-function gameLyricsBounds() {
-  const displayBounds = screen.getPrimaryDisplay().bounds;
+function gameLyricsBounds(display = screen.getPrimaryDisplay()) {
+  const displayBounds = display.bounds;
   const width = Math.min(520, Math.max(380, Math.round(displayBounds.width * .3)));
   const height = 188;
+  const verticalTravel = Math.max(0, displayBounds.height - height);
+  const verticalRatio = Number.isFinite(gameLyricsSettings.verticalRatio) ? gameLyricsSettings.verticalRatio : .5;
   return {
-    x: displayBounds.x,
-    y: Math.round(displayBounds.y + (displayBounds.height - height) / 2),
+    x: gameLyricsSettings.side === 'right' ? displayBounds.x + displayBounds.width - width : displayBounds.x,
+    y: Math.round(displayBounds.y + verticalTravel * Math.max(0, Math.min(1, verticalRatio))),
     width,
     height
   };
@@ -250,7 +257,53 @@ function gameLyricsBounds() {
 
 function positionGameLyricsWindow() {
   if (!gameLyricsWindow || gameLyricsWindow.isDestroyed()) return;
-  gameLyricsWindow.setBounds(gameLyricsBounds(), false);
+  const currentDisplay = screen.getAllDisplays().find((display) => display.id === gameLyricsDisplayId)
+    || screen.getDisplayMatching(gameLyricsWindow.getBounds())
+    || screen.getPrimaryDisplay();
+  gameLyricsDisplayId = currentDisplay.id;
+  gameLyricsWindow.setBounds(gameLyricsBounds(currentDisplay), false);
+}
+
+function applyGameLyricsWindowLock() {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed()) return;
+  gameLyricsWindow.setResizable(false);
+  if (typeof gameLyricsWindow.setMovable === 'function') gameLyricsWindow.setMovable(!gameLyricsSettings.locked);
+}
+
+function notifyGameLyricsSettings() {
+  gameLyricsWindow?.webContents.send('game-lyrics:settings', gameLyricsSettings);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('game-lyrics:settings-updated', gameLyricsSettings);
+  }
+}
+
+function setGameLyricsLocked(locked) {
+  gameLyricsSettings.locked = Boolean(locked);
+  if (gameLyricsSettings.locked) gameLyricsDragState = null;
+  applyGameLyricsWindowLock();
+  notifyGameLyricsSettings();
+}
+
+function snapGameLyricsWindow(preferredSide = null) {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed()) return;
+  const currentBounds = gameLyricsWindow.getBounds();
+  const center = {
+    x: currentBounds.x + currentBounds.width / 2,
+    y: currentBounds.y + currentBounds.height / 2
+  };
+  const display = screen.getDisplayNearestPoint(center);
+  const displayBounds = display.bounds;
+  const leftDistance = Math.abs(currentBounds.x - displayBounds.x);
+  const rightDistance = Math.abs(displayBounds.x + displayBounds.width - (currentBounds.x + currentBounds.width));
+  gameLyricsSettings.side = ['left', 'right'].includes(preferredSide)
+    ? preferredSide
+    : leftDistance <= rightDistance ? 'left' : 'right';
+  const verticalTravel = Math.max(0, displayBounds.height - currentBounds.height);
+  const clampedY = Math.max(displayBounds.y, Math.min(currentBounds.y, displayBounds.y + verticalTravel));
+  gameLyricsSettings.verticalRatio = verticalTravel ? (clampedY - displayBounds.y) / verticalTravel : 0;
+  gameLyricsDisplayId = display.id;
+  gameLyricsWindow.setBounds(gameLyricsBounds(display), false);
+  notifyGameLyricsSettings();
 }
 
 function createGameLyricsWindow() {
@@ -279,8 +332,10 @@ function createGameLyricsWindow() {
     }
   });
   gameLyricsWindow.setAlwaysOnTop(true, 'screen-saver');
-  gameLyricsWindow.setIgnoreMouseEvents(true, { forward: true });
+  gameLyricsWindow.setIgnoreMouseEvents(false);
   gameLyricsWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  gameLyricsDisplayId = screen.getPrimaryDisplay().id;
+  applyGameLyricsWindowLock();
   gameLyricsWindow.loadFile(path.join(__dirname, 'game-lyrics.html'));
   gameLyricsWindow.webContents.on('did-finish-load', () => {
     gameLyricsWindow?.webContents.send('game-lyrics:settings', gameLyricsSettings);
@@ -288,6 +343,7 @@ function createGameLyricsWindow() {
     if (gameLyricsVisible) gameLyricsWindow?.showInactive();
   });
   gameLyricsWindow.on('closed', () => {
+    gameLyricsDragState = null;
     gameLyricsWindow = null;
   });
   return gameLyricsWindow;
@@ -300,6 +356,7 @@ function setGameLyricsVisible(visible) {
     positionGameLyricsWindow();
     lyricsWindow.showInactive();
   } else {
+    gameLyricsDragState = null;
     gameLyricsWindow?.hide();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -694,9 +751,49 @@ ipcMain.on('game-lyrics:set-settings', (_event, settings) => {
   const nextSettings = { ...gameLyricsSettings, ...settings };
   gameLyricsSettings = {
     dualLine: nextSettings.dualLine !== false,
-    fontSize: ['compact', 'standard', 'large'].includes(nextSettings.fontSize) ? nextSettings.fontSize : 'standard'
+    fontSize: ['compact', 'standard', 'large'].includes(nextSettings.fontSize) ? nextSettings.fontSize : 'standard',
+    locked: Boolean(nextSettings.locked),
+    side: ['left', 'right'].includes(nextSettings.side) ? nextSettings.side : 'left',
+    verticalRatio: Number.isFinite(nextSettings.verticalRatio)
+      ? Math.max(0, Math.min(1, nextSettings.verticalRatio))
+      : .5
   };
-  gameLyricsWindow?.webContents.send('game-lyrics:settings', gameLyricsSettings);
+  applyGameLyricsWindowLock();
+  positionGameLyricsWindow();
+  notifyGameLyricsSettings();
+});
+ipcMain.on('game-lyrics:set-locked', (event, locked) => {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed() || event.sender !== gameLyricsWindow.webContents) return;
+  setGameLyricsLocked(locked);
+});
+ipcMain.on('game-lyrics:snap-side', (event, side) => {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed() || event.sender !== gameLyricsWindow.webContents) return;
+  snapGameLyricsWindow(side);
+});
+ipcMain.on('game-lyrics:hide', (event) => {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed() || event.sender !== gameLyricsWindow.webContents) return;
+  setGameLyricsVisible(false);
+});
+ipcMain.on('game-lyrics:drag-start', (event, point) => {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed() || gameLyricsSettings.locked) return;
+  if (event.sender !== gameLyricsWindow.webContents || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  const bounds = gameLyricsWindow.getBounds();
+  gameLyricsDragState = { offsetX: point.x - bounds.x, offsetY: point.y - bounds.y };
+});
+ipcMain.on('game-lyrics:drag-move', (event, point) => {
+  if (!gameLyricsDragState || !gameLyricsWindow || gameLyricsWindow.isDestroyed() || gameLyricsSettings.locked) return;
+  if (event.sender !== gameLyricsWindow.webContents || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  gameLyricsWindow.setPosition(
+    Math.round(point.x - gameLyricsDragState.offsetX),
+    Math.round(point.y - gameLyricsDragState.offsetY),
+    false
+  );
+});
+ipcMain.on('game-lyrics:drag-end', (event) => {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed() || event.sender !== gameLyricsWindow.webContents) return;
+  if (!gameLyricsDragState) return;
+  gameLyricsDragState = null;
+  snapGameLyricsWindow();
 });
 
 app.whenReady().then(() => {

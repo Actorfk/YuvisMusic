@@ -9,11 +9,20 @@
 </head>
 <body>
   <main class="game-lyrics-shell" aria-live="polite">
+    <div class="drag-hint">拖动后自动吸附左右边缘 · 右击锁定</div>
     <div class="overlay-mark" aria-hidden="true"><i></i><span>YUVIS</span></div>
     <div class="song-context"><strong id="songTitle">Yuvis音乐</strong><span id="songArtist">游戏歌词</span></div>
-    <p class="primary-line" id="primaryLine">播放音乐后将在这里显示歌词</p>
-    <p class="secondary-line" id="secondaryLine">透明置顶 · 鼠标穿透</p>
+    <div class="line-viewport primary-viewport"><p class="primary-line" id="primaryLine">播放音乐后将在这里显示歌词</p></div>
+    <div class="line-viewport secondary-viewport" id="secondaryViewport"><p class="secondary-line" id="secondaryLine">透明置顶 · 左右吸附</p></div>
   </main>
+  <nav class="lyrics-context-menu" id="lyricsContextMenu" aria-label="游戏歌词菜单" hidden>
+    <button id="contextLockBtn"><span>锁定游戏歌词</span><kbd>锁</kbd></button>
+    <div class="context-divider"></div>
+    <button data-snap-side="left"><span>吸附到左侧</span><kbd>←</kbd></button>
+    <button data-snap-side="right"><span>吸附到右侧</span><kbd>→</kbd></button>
+    <div class="context-divider"></div>
+    <button class="context-close" id="contextCloseBtn"><span>关闭游戏歌词</span><kbd>×</kbd></button>
+  </nav>
   <script src="game-lyrics.js"></script>
 </body>
 </html>
