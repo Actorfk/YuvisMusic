@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';" />
+  <title>Yuvis音乐 · 游戏歌词</title>
+  <link rel="stylesheet" href="game-lyrics.css" />
+</head>
+<body>
+  <main class="game-lyrics-shell" aria-live="polite">
+    <div class="overlay-mark" aria-hidden="true"><i></i><span>YUVIS</span></div>
+    <div class="song-context"><strong id="songTitle">Yuvis音乐</strong><span id="songArtist">游戏歌词</span></div>
+    <p class="primary-line" id="primaryLine">播放音乐后将在这里显示歌词</p>
+    <p class="secondary-line" id="secondaryLine">透明置顶 · 鼠标穿透</p>
+  </main>
+  <script src="game-lyrics.js"></script>
+</body>
+</html>

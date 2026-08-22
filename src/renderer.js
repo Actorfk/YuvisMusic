@@ -176,6 +176,7 @@ function normalizeListeningStats(value) {
 
 const savedAppSettings = readObjectStorage('appSettings');
 const savedDesktopLyricsSettings = savedAppSettings.desktopLyrics || readObjectStorage('desktopLyricsSettings');
+const savedGameLyricsSettings = savedAppSettings.gameLyrics || {};
 const savedFullscreenLyricsSettings = savedAppSettings.fullscreenLyrics || {};
 const savedAppearanceSettings = savedAppSettings.appearance || {};
 const savedEqualizerSettings = savedAppSettings.equalizer || {};
@@ -205,6 +206,11 @@ const state = {
     style: ['plain', 'classic', 'outline', 'soft'].includes(savedDesktopLyricsSettings.style) ? savedDesktopLyricsSettings.style : 'classic',
     primaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.primaryColor) ? savedDesktopLyricsSettings.primaryColor : '#ff3156',
     secondaryColor: /^#[0-9a-f]{6}$/i.test(savedDesktopLyricsSettings.secondaryColor) ? savedDesktopLyricsSettings.secondaryColor : '#ffffff'
+  },
+  gameLyricsSettings: {
+    enabled: Boolean(savedGameLyricsSettings.enabled),
+    dualLine: savedGameLyricsSettings.dualLine !== false,
+    fontSize: ['compact', 'standard', 'large'].includes(savedGameLyricsSettings.fontSize) ? savedGameLyricsSettings.fontSize : 'standard'
   },
   fullscreenLyricsSettings: {
     style: FULLSCREEN_LYRIC_STYLES.includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
@@ -735,6 +741,7 @@ function persistAppSettings() {
     shuffle: state.shuffle,
     repeat: state.repeat,
     desktopLyrics: state.desktopLyricsSettings,
+    gameLyrics: state.gameLyricsSettings,
     fullscreenLyrics: state.fullscreenLyricsSettings,
     equalizer: {
       enabled: state.equalizerSettings.enabled,
@@ -914,14 +921,16 @@ function desktopLyricsPayload(index = state.activeLyricIndex) {
   const nextLine = lyrics?.lines[lineIndex + 1];
   return {
     title: track?.title || 'Yuvis音乐',
-    artist: track?.artist || '桌面歌词',
+    artist: track?.artist || '',
     primary: line?.text || (track ? track.title : '播放音乐后将在这里显示歌词'),
     secondary: line?.translation || nextLine?.text || (track && !lyrics ? '暂无同步歌词' : '')
   };
 }
 
 function updateDesktopLyrics(index = state.activeLyricIndex) {
-  window.desktop.updateDesktopLyrics(desktopLyricsPayload(index));
+  const payload = desktopLyricsPayload(index);
+  window.desktop.updateDesktopLyrics(payload);
+  window.desktop.updateGameLyrics(payload);
 }
 
 function renderDesktopLyricsSettings() {
@@ -961,6 +970,27 @@ function toggleDesktopLyrics() {
   applyDesktopLyricsSettings({ notify: true });
 }
 
+function renderGameLyricsSettings() {
+  const settings = state.gameLyricsSettings;
+  $('#gameLyricsEnabledInput').checked = settings.enabled;
+  $('#gameLyricsDualInput').checked = settings.dualLine;
+  $('#gameLyricsFontOptions').querySelectorAll('[data-game-lyric-font]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.gameLyricFont === settings.fontSize);
+  });
+}
+
+function applyGameLyricsSettings({ updateVisibility = true, notify = false } = {}) {
+  persistAppSettings();
+  renderGameLyricsSettings();
+  window.desktop.setGameLyricsSettings({
+    dualLine: state.gameLyricsSettings.dualLine,
+    fontSize: state.gameLyricsSettings.fontSize
+  });
+  if (updateVisibility) window.desktop.setGameLyricsVisible(state.gameLyricsSettings.enabled);
+  updateDesktopLyrics();
+  if (notify) showToast(state.gameLyricsSettings.enabled ? '已开启游戏歌词' : '已关闭游戏歌词');
+}
+
 function renderPlaybackSettings() {
   audio.volume = state.volume;
   audio.muted = state.muted;
@@ -990,6 +1020,7 @@ function showSettingsSection(section) {
     playback: ['播放设置', '控制音量与默认播放行为'],
     shortcuts: ['快捷键', '自定义播放器的键盘组合键'],
     desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
+    gameLyrics: ['游戏歌词', '贴合屏幕左侧的透明置顶游戏覆盖层'],
     fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
@@ -1009,6 +1040,7 @@ function openSettings(section = 'playback') {
   closeModals();
   renderPlaybackSettings();
   renderDesktopLyricsSettings();
+  renderGameLyricsSettings();
   renderFullscreenLyricsSettings();
   renderAppearanceSettings();
   renderKeyboardShortcuts();
@@ -2459,6 +2491,21 @@ $('#desktopLyricsColorPresets').addEventListener('click', (event) => {
   state.desktopLyricsSettings.primaryColor = button.dataset.color;
   applyDesktopLyricsSettings({ updateVisibility: false });
 });
+$('#gameLyricsEnabledInput').addEventListener('change', (event) => {
+  state.gameLyricsSettings.enabled = event.target.checked;
+  applyGameLyricsSettings({ notify: true });
+});
+$('#gameLyricsDualInput').addEventListener('change', (event) => {
+  state.gameLyricsSettings.dualLine = event.target.checked;
+  applyGameLyricsSettings({ updateVisibility: false });
+});
+$('#gameLyricsFontOptions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-game-lyric-font]');
+  if (!button || !['compact', 'standard', 'large'].includes(button.dataset.gameLyricFont)) return;
+  state.gameLyricsSettings.fontSize = button.dataset.gameLyricFont;
+  applyGameLyricsSettings({ updateVisibility: false });
+  showToast(`游戏歌词字号已切换为「${button.textContent}」`);
+});
 $('#lyricsOffsetControl').addEventListener('click', (event) => {
   const stepButton = event.target.closest('[data-lyrics-offset-step]');
   if (stepButton) return adjustLyricsOffset(Number(stepButton.dataset.lyricsOffsetStep));
@@ -2798,6 +2845,11 @@ window.desktop.onDesktopLyricsSettings((settings) => {
   updateDesktopLyrics();
   showToast('桌面歌词外观已更新');
 });
+window.desktop.onGameLyricsVisibility((visible) => {
+  if (state.gameLyricsSettings.enabled === visible) return;
+  state.gameLyricsSettings.enabled = visible;
+  applyGameLyricsSettings({ updateVisibility: false });
+});
 
 async function init() {
   applyAppearanceSettings({ persist: false });
@@ -2805,6 +2857,7 @@ async function init() {
   applyPlaybackSettings();
   applyEqualizerSettings({ persist: false });
   applyDesktopLyricsSettings();
+  applyGameLyricsSettings();
   await loadAssistantConfig();
   renderView();
   renderQueue();

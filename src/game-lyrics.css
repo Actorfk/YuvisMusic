@@ -1,0 +1,24 @@
+:root {
+  --overlay-accent: #ff3156;
+  --overlay-text: #ffffff;
+  --overlay-secondary: rgba(255, 255, 255, .78);
+  --overlay-scale: 1;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+body { font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; user-select: none; pointer-events: none; }
+body[data-font-size="compact"] { --overlay-scale: .86; }
+body[data-font-size="large"] { --overlay-scale: 1.16; }
+.game-lyrics-shell { position: relative; width: 100%; height: 100%; padding: 25px 30px 25px 26px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; color: var(--overlay-text); }
+.game-lyrics-shell::before { content: ""; position: absolute; inset: 10px 0; border-left: 3px solid var(--overlay-accent); background: linear-gradient(90deg, rgba(8, 10, 14, .54), rgba(8, 10, 14, .19) 62%, transparent 100%); opacity: .82; }
+.overlay-mark, .song-context, .primary-line, .secondary-line { position: relative; z-index: 1; }
+.overlay-mark { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; color: rgba(255,255,255,.58); font-size: 9px; font-weight: 750; letter-spacing: .16em; text-shadow: 0 2px 8px rgba(0,0,0,.9); }
+.overlay-mark i { width: 18px; height: 2px; border-radius: 2px; background: var(--overlay-accent); box-shadow: 0 0 10px rgba(255,49,86,.72); }
+.song-context { display: flex; gap: 8px; align-items: center; max-width: 100%; margin-bottom: 4px; color: rgba(255,255,255,.72); font-size: calc(11px * var(--overlay-scale)); text-shadow: 0 2px 8px rgba(0,0,0,.92); }
+.song-context strong, .song-context span { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-context span::before { content: "·"; margin-right: 8px; color: var(--overlay-accent); }
+.primary-line, .secondary-line { width: 100%; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; letter-spacing: .01em; text-shadow: 0 2px 3px #000, 0 0 8px rgba(0,0,0,.98), 0 4px 18px rgba(0,0,0,.82); }
+.primary-line { color: var(--overlay-text); font-size: calc(27px * var(--overlay-scale)); line-height: 1.28; font-weight: 780; }
+.secondary-line { margin-top: 4px; color: var(--overlay-secondary); font-size: calc(17px * var(--overlay-scale)); line-height: 1.25; font-weight: 620; }
+.secondary-line[hidden] { display: none; }

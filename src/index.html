@@ -352,6 +352,7 @@
           <button class="active" data-settings-section="playback"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-9 6 9 6z"/></svg><span>播放</span></button>
           <button data-settings-section="shortcuts"><svg viewBox="0 0 24 24"><path d="M5 7h14v10H5zM8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg><span>快捷键</span></button>
           <button data-settings-section="desktopLyrics"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 9h6M9 12h4"/></svg><span>桌面歌词</span></button>
+          <button data-settings-section="gameLyrics"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10v4M6 12h4M15 11h.01M18 13h.01"/></svg><span>游戏歌词</span></button>
           <button data-settings-section="fullscreenLyrics"><svg viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/><path d="M8 12h8M8 16h6"/></svg><span>全屏歌词</span></button>
           <button data-settings-section="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.4-2l-.4-.8c-.5-1 .2-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-9-9-9Z"/><circle cx="7.5" cy="11" r=".7"/><circle cx="10" cy="7" r=".7"/><circle cx="15" cy="7.5" r=".7"/></svg><span>外观</span></button>
           <button data-settings-section="yuvis"><svg viewBox="0 0 24 24"><path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M5 18h8"/></svg><span>Yuvis 配置</span></button>
@@ -421,6 +422,26 @@
               <button data-color="#ff3156" aria-label="一点红"></button><button data-color="#ffb300" aria-label="琥珀黄"></button><button data-color="#4cc9f0" aria-label="天空蓝"></button><button data-color="#8bffb0" aria-label="薄荷绿"></button><button data-color="#ffffff" aria-label="纯白"></button>
             </div>
           </div>
+        </div>
+
+        <div class="settings-panel game-lyrics-panel" data-settings-panel="gameLyrics" hidden>
+          <div class="game-overlay-preview" aria-hidden="true">
+            <div class="game-overlay-scene"><i></i><i></i><i></i></div>
+            <div class="game-overlay-sample"><small>YUVIS · 游戏歌词</small><strong>沉浸游戏，也不错过这一句</strong><span>透明覆盖 · 最高置顶 · 鼠标穿透</span></div>
+          </div>
+          <div class="setting-list compact-setting-list">
+            <label class="setting-row"><span><strong>显示游戏歌词</strong><small>固定在主屏幕最左侧，覆盖在游戏画面上方</small></span><input id="gameLyricsEnabledInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>双层歌词</strong><small>优先显示翻译，没有翻译时显示下一句</small></span><input id="gameLyricsDualInput" class="switch-input" type="checkbox" /></label>
+          </div>
+          <div class="setting-block game-lyrics-font-block">
+            <span class="setting-label">覆盖层字号</span>
+            <div class="fullscreen-font-options" id="gameLyricsFontOptions">
+              <button data-game-lyric-font="compact">紧凑</button>
+              <button data-game-lyric-font="standard">标准</button>
+              <button data-game-lyric-font="large">大字</button>
+            </div>
+          </div>
+          <div class="settings-save-note"><i></i><span>覆盖层背景透明、始终最高置顶并穿透鼠标，不会抢走游戏焦点；无边框窗口化游戏兼容性最佳。</span></div>
         </div>
 
         <div class="settings-panel fullscreen-lyrics-panel" data-settings-panel="fullscreenLyrics" hidden>

@@ -13,6 +13,9 @@ let desktopLyricsWindow;
 let desktopLyricsVisible = false;
 let desktopLyricsPayload = null;
 let desktopLyricsDragState = null;
+let gameLyricsWindow;
+let gameLyricsVisible = false;
+let gameLyricsPayload = null;
 let assistantConfigCache = null;
 let desktopLyricsSettings = {
   dualLine: true,
@@ -20,6 +23,10 @@ let desktopLyricsSettings = {
   style: 'classic',
   primaryColor: '#ff3156',
   secondaryColor: '#ffffff'
+};
+let gameLyricsSettings = {
+  dualLine: true,
+  fontSize: 'standard'
 };
 
 function assistantConfigPath() {
@@ -155,6 +162,7 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
     if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) desktopLyricsWindow.destroy();
+    if (gameLyricsWindow && !gameLyricsWindow.isDestroyed()) gameLyricsWindow.destroy();
   });
 }
 
@@ -225,6 +233,77 @@ function setDesktopLyricsVisible(visible) {
   else desktopLyricsWindow?.hide();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('desktop-lyrics:visibility', desktopLyricsVisible);
+  }
+}
+
+function gameLyricsBounds() {
+  const displayBounds = screen.getPrimaryDisplay().bounds;
+  const width = Math.min(520, Math.max(380, Math.round(displayBounds.width * .3)));
+  const height = 188;
+  return {
+    x: displayBounds.x,
+    y: Math.round(displayBounds.y + (displayBounds.height - height) / 2),
+    width,
+    height
+  };
+}
+
+function positionGameLyricsWindow() {
+  if (!gameLyricsWindow || gameLyricsWindow.isDestroyed()) return;
+  gameLyricsWindow.setBounds(gameLyricsBounds(), false);
+}
+
+function createGameLyricsWindow() {
+  if (gameLyricsWindow && !gameLyricsWindow.isDestroyed()) return gameLyricsWindow;
+  gameLyricsWindow = new BrowserWindow({
+    ...gameLyricsBounds(),
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    focusable: false,
+    show: false,
+    title: 'Yuvis音乐 · 游戏歌词',
+    webPreferences: {
+      preload: path.join(__dirname, 'game-lyrics-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  });
+  gameLyricsWindow.setAlwaysOnTop(true, 'screen-saver');
+  gameLyricsWindow.setIgnoreMouseEvents(true, { forward: true });
+  gameLyricsWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  gameLyricsWindow.loadFile(path.join(__dirname, 'game-lyrics.html'));
+  gameLyricsWindow.webContents.on('did-finish-load', () => {
+    gameLyricsWindow?.webContents.send('game-lyrics:settings', gameLyricsSettings);
+    gameLyricsWindow?.webContents.send('game-lyrics:update', gameLyricsPayload);
+    if (gameLyricsVisible) gameLyricsWindow?.showInactive();
+  });
+  gameLyricsWindow.on('closed', () => {
+    gameLyricsWindow = null;
+  });
+  return gameLyricsWindow;
+}
+
+function setGameLyricsVisible(visible) {
+  gameLyricsVisible = Boolean(visible);
+  if (gameLyricsVisible) {
+    const lyricsWindow = createGameLyricsWindow();
+    positionGameLyricsWindow();
+    lyricsWindow.showInactive();
+  } else {
+    gameLyricsWindow?.hide();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('game-lyrics:visibility', gameLyricsVisible);
   }
 }
 
@@ -605,10 +684,28 @@ ipcMain.on('desktop-lyrics:drag-end', (event) => {
   desktopLyricsDragState = null;
 });
 
+ipcMain.on('game-lyrics:set-visible', (_event, visible) => setGameLyricsVisible(visible));
+ipcMain.on('game-lyrics:update', (_event, payload) => {
+  gameLyricsPayload = payload && typeof payload === 'object' ? payload : null;
+  gameLyricsWindow?.webContents.send('game-lyrics:update', gameLyricsPayload);
+});
+ipcMain.on('game-lyrics:set-settings', (_event, settings) => {
+  if (!settings || typeof settings !== 'object') return;
+  const nextSettings = { ...gameLyricsSettings, ...settings };
+  gameLyricsSettings = {
+    dualLine: nextSettings.dualLine !== false,
+    fontSize: ['compact', 'standard', 'large'].includes(nextSettings.fontSize) ? nextSettings.fontSize : 'standard'
+  };
+  gameLyricsWindow?.webContents.send('game-lyrics:settings', gameLyricsSettings);
+});
+
 app.whenReady().then(() => {
   migrateLegacyUserData()
     .catch((error) => console.warn('Unable to migrate legacy user data:', error.message))
     .finally(createWindow);
+  screen.on('display-metrics-changed', positionGameLyricsWindow);
+  screen.on('display-added', positionGameLyricsWindow);
+  screen.on('display-removed', positionGameLyricsWindow);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
