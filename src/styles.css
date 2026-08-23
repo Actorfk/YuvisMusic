@@ -120,10 +120,10 @@ h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .now-playing-sheet::before { content: ""; position: absolute; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb),.12), transparent 68%); left: -170px; top: -180px; }
 .player-page-close { position: absolute; right: 22px; top: 19px; z-index: 5; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: #777; background: rgba(255,255,255,.64); border: 1px solid rgba(0,0,0,.05); }
 .player-page-close:hover { color: var(--red); background: #fff; }
-.player-page-close svg { width: 19px; }
+.player-page-close svg { width: 18px; height: 18px; display: block; }
 .player-page-fullscreen { position: absolute; right: 70px; top: 19px; z-index: 5; height: 38px; padding: 0 12px; display: flex; align-items: center; gap: 7px; border: 1px solid rgba(0,0,0,.05); border-radius: 12px; color: #666368; background: rgba(255,255,255,.64); font-size: 11px; font-weight: 650; }
 .player-page-fullscreen:hover { color: var(--red); background: #fff; }
-.player-page-fullscreen svg { width: 16px; }
+.player-page-fullscreen svg { width: 16px; height: 16px; display: block; flex: 0 0 16px; }
 .player-page-fullscreen .fullscreen-exit-icon { display: none; }
 body.fullscreen-lyrics .player-page-fullscreen .fullscreen-enter-icon { display: none; }
 body.fullscreen-lyrics .player-page-fullscreen .fullscreen-exit-icon { display: block; }
@@ -148,7 +148,7 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .lyrics-source.available i { background: var(--red); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.08); }
 .lyrics-toolbar button { height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 9px; color: #555; font-size: 12px; border: 1px solid #dedbd7; }
 .lyrics-toolbar button:hover { color: var(--red); border-color: rgba(var(--accent-rgb),.24); background: var(--red-soft); }
-.lyrics-toolbar button svg { width: 16px; }
+.lyrics-toolbar button svg { width: 16px; height: 16px; display: block; flex: 0 0 16px; }
 .lyrics-offset-control { max-width: 480px; min-height: 35px; margin: 7px 0 1px; display: flex; align-items: center; gap: 6px; color: #888; font-size: 11px; }
 .lyrics-offset-control > span { margin-right: 3px; color: #777; font-weight: 650; }
 .lyrics-offset-control button { width: 28px; height: 27px; display: grid; place-items: center; border: 1px solid #dedbd7; border-radius: 8px; color: #68666a; background: rgba(255,255,255,.5); font-size: 14px; }
@@ -167,7 +167,7 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .lyric-translation { display: block; margin-top: 3px; color: #aaa; font-size: .72em; font-weight: 500; line-height: 1.4; }
 .detail-lyrics p.active .lyric-translation { color: #7c787c; }
 .lyrics-empty { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; color: #aaa; transform: translateY(-28px); }
-.lyrics-empty svg { width: 27px; margin-bottom: 11px; color: #bbb; }
+.lyrics-empty svg { width: 28px; height: 28px; display: block; flex: none; margin-bottom: 11px; color: #bbb; }
 .lyrics-empty strong { color: #555; font-size: 17px; }
 .lyrics-empty span { font-size: 12px; margin-top: 7px; }
 
@@ -640,7 +640,7 @@ body.is-playing .play-button .pause-icon { display: block; }
 .settings-sidebar nav button + button { margin-top: 3px; }
 .settings-sidebar nav button:hover { color: var(--ink); background: rgba(255,255,255,.58); }
 .settings-sidebar nav button.active { color: var(--red); background: #fff; font-weight: 650; box-shadow: 0 5px 18px rgba(30,25,25,.05); }
-.settings-sidebar nav svg { width: 17px; }
+.settings-sidebar nav svg { width: 18px; height: 18px; display: block; justify-self: center; }
 .settings-sidebar nav em { padding: 2px 5px; border-radius: 5px; color: #999; background: #e5e3e0; font-size: 8px; font-style: normal; }
 .settings-content { min-width: 0; padding: 27px 34px 30px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #ddd transparent; }
 .settings-header { min-height: 55px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--line); }
