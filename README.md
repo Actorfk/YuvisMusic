@@ -48,9 +48,9 @@ npm run build
 npm run build:portable
 ```
 
-安装包会输出到 `dist/1.0.4/Yuvis-Music-1.0.4-x64.exe`，使用系统级安装并在 Windows“控制面板 → 程序和功能”中注册卸载入口。
+安装包会输出到 `dist/1.0.5/Yuvis-Music-1.0.5-x64.exe`，使用系统级安装并在 Windows“控制面板 → 程序和功能”中注册卸载入口。
 
-推荐便携版会输出到 `dist/1.0.4/Yuvis-Music-1.0.4-x64-Portable.zip`。解压后运行其中的 `Yuvis音乐.exe`，不会安装或写入控制面板；ZIP 方案不使用容易触发杀毒软件启发式检测的 NSIS 自解压外壳，也不包含播放器不需要的提权辅助程序。若因兼容需求仍要生成旧式单文件版本，可执行 `npm run build:portable:single-exe`，但不建议公开分发未签名的单文件自解压包。
+推荐便携版会输出到 `dist/1.0.5/Yuvis-Music-1.0.5-x64-Portable.zip`。解压后运行其中的 `Yuvis音乐.exe`，不会安装或写入控制面板；ZIP 方案不使用容易触发杀毒软件启发式检测的 NSIS 自解压外壳，也不包含播放器不需要的提权辅助程序。若因兼容需求仍要生成旧式单文件版本，可执行 `npm run build:portable:single-exe`，但不建议公开分发未签名的单文件自解压包。
 
 ## 修改留档
 
