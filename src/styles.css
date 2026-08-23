@@ -131,7 +131,7 @@ body.fullscreen-lyrics .player-page-fullscreen .fullscreen-exit-icon { display: 
 .detail-halo { position: absolute; width: 320px; height: 320px; border-radius: 50%; background: rgba(var(--accent-rgb),.08); filter: blur(2px); }
 .detail-cover { width: min(25vw, 310px); aspect-ratio: 1; border-radius: 22px; z-index: 2; background: linear-gradient(145deg, #242328, #0e0e10); background-position: center; background-size: cover; display: grid; place-items: center; box-shadow: 0 30px 60px rgba(27,21,21,.24); color: var(--red); font-size: 70px; transform: translateX(-22px); }
 .detail-cover span { filter: drop-shadow(0 5px 10px rgba(0,0,0,.3)); }
-.detail-vinyl { width: min(22vw, 276px); aspect-ratio: 1; border-radius: 50%; position: absolute; left: 50%; top: 50%; translate: 25% -50%; background: repeating-radial-gradient(circle, #18181b 0, #18181b 3px, #28282c 4px, #141416 6px); box-shadow: 0 25px 45px rgba(0,0,0,.24); animation: spin 12s linear infinite; animation-play-state: paused; }
+.detail-vinyl { width: min(22vw, 276px); aspect-ratio: 1; border-radius: 50%; position: absolute; right: -12px; background: repeating-radial-gradient(circle, #18181b 0, #18181b 3px, #28282c 4px, #141416 6px); box-shadow: 0 25px 45px rgba(0,0,0,.24); animation: spin 12s linear infinite; animation-play-state: paused; }
 body.is-playing .detail-vinyl { animation-play-state: running; }
 .detail-vinyl::before { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: var(--red); box-shadow: inset 0 0 0 12px rgba(0,0,0,.09); }
 .detail-vinyl i { position: absolute; width: 9px; height: 9px; left: calc(50% - 4.5px); top: calc(50% - 4.5px); border-radius: 50%; background: #171719; z-index: 2; }
@@ -187,7 +187,7 @@ body.fullscreen-lyrics .detail-kicker i { background: #91c7ff; }
 body.fullscreen-lyrics .detail-art-stage { min-height: min(72vh, 720px); }
 body.fullscreen-lyrics .detail-halo { width: min(35vw, 520px); height: min(35vw, 520px); background: rgba(100,169,255,.14); filter: blur(12px); }
 body.fullscreen-lyrics .detail-cover { width: min(28vw, 430px); border-radius: 30px; color: #82bfff; box-shadow: 0 42px 90px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.08); }
-body.fullscreen-lyrics .detail-vinyl { width: min(25vw, 390px); box-shadow: 0 36px 74px rgba(0,0,0,.38); }
+body.fullscreen-lyrics .detail-vinyl { width: min(25vw, 390px); left: 50%; right: auto; top: 50%; translate: 25% -50%; box-shadow: 0 36px 74px rgba(0,0,0,.38); }
 body.fullscreen-lyrics .detail-content { width: 100%; }
 body.fullscreen-lyrics .detail-content h2 { max-width: 720px; font-size: clamp(38px, 4vw, 64px); color: #fff; }
 body.fullscreen-lyrics .detail-artist { color: rgba(235,242,252,.72); font-size: 19px; }
