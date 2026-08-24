@@ -2726,7 +2726,7 @@ document.addEventListener('keydown', (event) => {
     else if (state.fullscreenLyrics) setFullscreenLyrics(false);
     else if (state.playerOpen) closeNowPlayingPage();
   }
-  const isInteractive = document.activeElement.matches('input, button, select, textarea, [contenteditable="true"]');
+  const isTextEntry = document.activeElement.matches('input, select, textarea, [contenteditable="true"]');
   if (event.repeat) return;
   if (event.code === 'MediaPlayPause') {
     event.preventDefault();
@@ -2743,7 +2743,7 @@ document.addEventListener('keydown', (event) => {
     nextTrack(1);
     return;
   }
-  if (isInteractive) return;
+  if (isTextEntry) return;
   const action = Object.keys(SHORTCUT_ACTIONS).find((shortcutAction) => eventMatchesShortcut(event, state.keyboardShortcuts[shortcutAction]));
   if (!action) return;
   event.preventDefault();
