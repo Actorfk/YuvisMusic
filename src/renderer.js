@@ -1,5 +1,6 @@
 const $ = (selector) => document.querySelector(selector);
 const audio = $('#audio');
+const { migrateStoredTrackIds } = window.YuvisTrackIdentity;
 
 const APPEARANCE_THEMES = {
   crimson: { color: '#cf0a2c', bright: '#e11436', soft: '#fff0f2', rgb: '207, 10, 44' },
@@ -182,13 +183,23 @@ const savedAppearanceSettings = savedAppSettings.appearance || {};
 const savedEqualizerSettings = savedAppSettings.equalizer || {};
 const savedEqualizerPresets = readStorage('equalizerPresets', []);
 const savedVolume = Number(savedAppSettings.volume ?? .8);
+const storedFavoriteIds = readArrayStorage('favorites').filter((item) => typeof item === 'string');
+const storedHistoryIds = readArrayStorage('history').filter((item) => typeof item === 'string');
+const migratedFavoriteIds = migrateStoredTrackIds(storedFavoriteIds);
+const migratedHistoryIds = migrateStoredTrackIds(storedHistoryIds);
+if (JSON.stringify(migratedFavoriteIds) !== JSON.stringify(storedFavoriteIds)) {
+  localStorage.setItem('favorites', JSON.stringify(migratedFavoriteIds));
+}
+if (JSON.stringify(migratedHistoryIds) !== JSON.stringify(storedHistoryIds)) {
+  localStorage.setItem('history', JSON.stringify(migratedHistoryIds));
+}
 
 const state = {
   library: [],
   queue: [],
   currentId: null,
-  favorites: new Set(readArrayStorage('favorites').filter((item) => typeof item === 'string')),
-  history: readArrayStorage('history').filter((item) => typeof item === 'string'),
+  favorites: new Set(migratedFavoriteIds),
+  history: migratedHistoryIds,
   playlists: normalizePlaylists(readStorage('playlists', [])),
   lyricFiles: readObjectStorage('lyricFiles'),
   lyricOffsets: readObjectStorage('lyricOffsets'),

@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, safeStorage, screen, shell } = requ
 const path = require('path');
 const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
+const { stableTrackId } = require('./track-identity');
 
 const AUDIO_EXTENSIONS = new Set([
   '.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'
@@ -461,7 +462,7 @@ async function getTrackInfo(filePath) {
   const embeddedLyrics = normalizeEmbeddedLyrics(common.lyrics, format);
   const lyrics = embeddedLyrics || await findSidecarLyrics(normalizedPath);
   return {
-    id: `${normalizedPath}:${stats.mtimeMs}`,
+    id: stableTrackId(normalizedPath),
     path: normalizedPath,
     url: pathToFileURL(normalizedPath).href,
     title: common.title || filename,
