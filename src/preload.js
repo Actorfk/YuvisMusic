@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('desktop', {
   loadDroppedTracks: (paths) => ipcRenderer.invoke('library:load-dropped', paths),
   getDroppedFilePath: (file) => webUtils.getPathForFile(file),
   restoreTracks: (paths) => ipcRenderer.invoke('library:restore', paths),
+  getTrackCover: (filePath) => ipcRenderer.invoke('track:get-cover', filePath),
+  getTrackLyrics: (filePath) => ipcRenderer.invoke('track:get-lyrics', filePath),
   chooseLyricsFile: () => ipcRenderer.invoke('lyrics:choose-file'),
   readLyricsFile: (lyricsPath) => ipcRenderer.invoke('lyrics:read-file', lyricsPath),
   getAssistantConfig: () => ipcRenderer.invoke('assistant:get-config'),

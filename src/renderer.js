@@ -83,6 +83,10 @@ let equalizerSourceNode = null;
 let equalizerFilterNodes = [];
 let recordingShortcutAction = null;
 const scalableFontRules = new Map();
+let coverObserver = null;
+const coverLoadQueue = [];
+let activeCoverLoads = 0;
+let playlistArtworkRenderTimer = null;
 
 function readStorage(key, fallback) {
   try {
@@ -263,7 +267,8 @@ const state = {
   listeningSeconds: Number(localStorage.getItem('listeningSeconds') || 0),
   listeningStats: normalizeListeningStats(readStorage('listeningStats', { days: {} })),
   listeningSession: null,
-  listeningPersistTicks: 0
+  listeningPersistTicks: 0,
+  trackById: new Map()
 };
 
 const viewNames = {
@@ -429,13 +434,86 @@ function escapeHtml(value = '') {
 }
 
 function coverStyle(track) {
-  return track?.cover ? `data-cover-id="${escapeHtml(track.id)}"` : '';
+  return track ? `data-cover-id="${escapeHtml(track.id)}"` : '';
+}
+
+function rebuildTrackIndex() {
+  state.trackById = new Map(state.library.map((track) => [track.id, track]));
+}
+
+function setLibrary(tracks) {
+  state.library = Array.isArray(tracks) ? tracks : [];
+  rebuildTrackIndex();
+}
+
+function updateTrackCoverElements(track) {
+  if (!track?.cover) return;
+  document.querySelectorAll('[data-cover-id]').forEach((element) => {
+    if (element.dataset.coverId !== track.id) return;
+    element.style.backgroundImage = `url(${JSON.stringify(track.cover)})`;
+    element.replaceChildren();
+  });
+  clearTimeout(playlistArtworkRenderTimer);
+  playlistArtworkRenderTimer = setTimeout(renderPlaylistNav, 80);
+  if (track.id !== state.currentId) return;
+  $('#playerCover').style.backgroundImage = `url(${JSON.stringify(track.cover)})`;
+  $('.cover-note').style.display = 'none';
+  $('#detailCover').style.backgroundImage = `url(${JSON.stringify(track.cover)})`;
+  $('#detailCover span').style.display = 'none';
+}
+
+function pumpCoverLoadQueue() {
+  while (activeCoverLoads < 3 && coverLoadQueue.length) {
+    const track = coverLoadQueue.shift();
+    activeCoverLoads += 1;
+    track.coverState = 'loading';
+    window.desktop.getTrackCover(track.path).then((cover) => {
+      track.cover = cover;
+      track.coverState = cover ? 'loaded' : 'none';
+      if (cover) updateTrackCoverElements(track);
+    }).catch(() => {
+      track.coverState = 'none';
+    }).finally(() => {
+      activeCoverLoads -= 1;
+      pumpCoverLoadQueue();
+    });
+  }
+}
+
+function ensureTrackCover(track, { priority = false } = {}) {
+  if (!track || track.cover || ['queued', 'loading', 'none'].includes(track.coverState)) return;
+  track.coverState = 'queued';
+  if (priority) coverLoadQueue.unshift(track); else coverLoadQueue.push(track);
+  pumpCoverLoadQueue();
+}
+
+function getCoverObserver() {
+  if (!coverObserver) {
+    coverObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        coverObserver.unobserve(entry.target);
+        ensureTrackCover(state.trackById.get(entry.target.dataset.coverId));
+      });
+    }, { rootMargin: '160px' });
+  }
+  return coverObserver;
+}
+
+function releaseCoverImages(root) {
+  if (!coverObserver) return;
+  root.querySelectorAll('[data-cover-id]').forEach((element) => coverObserver.unobserve(element));
 }
 
 function applyCoverImages(root = document) {
   root.querySelectorAll('[data-cover-id]').forEach((element) => {
-    const track = state.library.find((item) => item.id === element.dataset.coverId);
-    if (track?.cover) element.style.backgroundImage = `url("${track.cover}")`;
+    const track = state.trackById.get(element.dataset.coverId);
+    if (track?.cover) {
+      element.style.backgroundImage = `url(${JSON.stringify(track.cover)})`;
+      element.replaceChildren();
+    } else if (track?.coverState !== 'none') {
+      getCoverObserver().observe(element);
+    }
   });
 }
 
@@ -1151,15 +1229,26 @@ function runLyricClock() {
 async function loadAssignedLyrics(track) {
   const lyricsPath = state.lyricFiles[track.path];
   if (!lyricsPath) {
-    renderLyrics(track);
-    updateLyricPosition(audio.currentTime);
+    if (track.lyricsState !== 'loaded') {
+      track.lyricsState = 'loading';
+      try {
+        track.lyrics = await window.desktop.getTrackLyrics(track.path);
+      } catch {
+        track.lyrics = null;
+      }
+      track.lyricsState = 'loaded';
+    }
+    if (track.id === state.currentId) {
+      renderLyrics(track);
+      updateLyricPosition(audio.currentTime);
+    }
     return;
   }
   const result = await window.desktop.readLyricsFile(lyricsPath);
   if (!result) {
     delete state.lyricFiles[track.path];
     persistLyricFiles();
-    if (track.id === state.currentId) renderLyrics(track);
+    await loadAssignedLyrics(track);
     return;
   }
   track.manualLyrics = { source: 'file', path: result.path, text: result.text, syncedLines: [] };
@@ -1346,6 +1435,7 @@ function playlistArtwork(playlist, size = 'small') {
 }
 
 function renderPlaylistNav() {
+  releaseCoverImages($('#playlistNav'));
   $('#playlistNav').innerHTML = state.playlists.map((playlist) => `
     <button class="nav-item ${state.view === 'playlist' && state.activePlaylistId === playlist.id ? 'active' : ''}" data-playlist-id="${escapeHtml(playlist.id)}">
       ${playlistArtwork(playlist, 'small')}
@@ -1357,6 +1447,7 @@ function renderPlaylistNav() {
 function renderLibrary() {
   const tracks = getVisibleTracks();
   const list = $('#trackList');
+  releaseCoverImages(list);
   $('#trackSummary').textContent = `${tracks.length} 首歌曲`;
   $('#libraryBadge').textContent = state.library.length;
   $('#favoriteBadge').textContent = state.favorites.size;
@@ -1401,6 +1492,7 @@ function renderLibrary() {
 
 function renderQueue() {
   const list = $('#queueList');
+  releaseCoverImages(list);
   if (!state.queue.length) {
     list.innerHTML = '<div class="queue-empty"><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div><span>队列中暂无歌曲</span></div>';
     return;
@@ -2018,6 +2110,7 @@ function mergeTracks(newTracks, { notify = true } = {}) {
     additions.push(track);
   });
   state.library.push(...additions);
+  rebuildTrackIndex();
   persistLibrary();
   renderLibrary();
   updateStats();
@@ -2121,6 +2214,7 @@ function loadTrack(track, autoplay = true) {
   renderLibrary();
   renderQueue();
   renderNowPlaying();
+  ensureTrackCover(track, { priority: true });
   renderLyrics(track);
   loadAssignedLyrics(track);
   updateStats();
@@ -2893,16 +2987,20 @@ async function init() {
   applyEqualizerSettings({ persist: false });
   applyDesktopLyricsSettings();
   applyGameLyricsSettings();
-  await loadAssistantConfig();
   renderView();
   renderQueue();
   updateStats();
+  loadAssistantConfig().catch((error) => console.warn('Unable to initialize assistant:', error.message));
   const savedPaths = readArrayStorage('libraryPaths').filter((item) => typeof item === 'string');
   if (savedPaths.length) {
-    const restored = await window.desktop.restoreTracks(savedPaths);
-    state.library = restored;
-    renderView();
-    updateStats();
+    try {
+      const restored = await window.desktop.restoreTracks(savedPaths);
+      setLibrary(restored);
+      renderView();
+      updateStats();
+    } catch (error) {
+      console.warn('Unable to restore library:', error.message);
+    }
   }
 }
 

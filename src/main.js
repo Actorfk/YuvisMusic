@@ -1,13 +1,22 @@
-const { app, BrowserWindow, dialog, ipcMain, safeStorage, screen, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, nativeImage, safeStorage, screen, shell } = require('electron');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
 const { stableTrackId } = require('./track-identity');
+const {
+  createLibraryMetadataCache,
+  normalizeLibraryMetadataCache,
+  readCachedMetadata,
+  trackFileSignature,
+  writeCachedMetadata
+} = require('./library-cache');
 
 const AUDIO_EXTENSIONS = new Set([
   '.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'
 ]);
 const METADATA_CONCURRENCY = 6;
+const COVER_THUMBNAIL_SIZE = 512;
 
 let mainWindow;
 let desktopLyricsWindow;
@@ -20,6 +29,10 @@ let gameLyricsPayload = null;
 let gameLyricsDragState = null;
 let gameLyricsDisplayId = null;
 let assistantConfigCache = null;
+let libraryMetadataCachePromise = null;
+let libraryMetadataCacheDirty = false;
+let libraryMetadataCacheWrite = Promise.resolve();
+let musicMetadataModulePromise = null;
 let desktopLyricsSettings = {
   dualLine: true,
   locked: false,
@@ -37,6 +50,56 @@ let gameLyricsSettings = {
 
 function assistantConfigPath() {
   return path.join(app.getPath('userData'), 'yuvis-assistant.json');
+}
+
+function libraryMetadataCachePath() {
+  return path.join(app.getPath('userData'), 'library-metadata-cache.json');
+}
+
+function coverCacheDirectory() {
+  return path.join(app.getPath('userData'), 'cover-cache');
+}
+
+function cacheKey(filePath) {
+  return stableTrackId(path.resolve(filePath));
+}
+
+function readLibraryMetadataCache() {
+  if (!libraryMetadataCachePromise) {
+    libraryMetadataCachePromise = fs.readFile(libraryMetadataCachePath(), 'utf8')
+      .then((content) => normalizeLibraryMetadataCache(JSON.parse(content)))
+      .catch(() => createLibraryMetadataCache());
+  }
+  return libraryMetadataCachePromise;
+}
+
+function markLibraryMetadataCacheDirty() {
+  libraryMetadataCacheDirty = true;
+}
+
+async function persistLibraryMetadataCache() {
+  if (!libraryMetadataCacheDirty) return libraryMetadataCacheWrite;
+  const cache = await readLibraryMetadataCache();
+  libraryMetadataCacheDirty = false;
+  const targetPath = libraryMetadataCachePath();
+  const temporaryPath = `${targetPath}.tmp`;
+  const snapshot = JSON.stringify(cache);
+  libraryMetadataCacheWrite = libraryMetadataCacheWrite
+    .catch(() => {})
+    .then(async () => {
+      await fs.writeFile(temporaryPath, snapshot, 'utf8');
+      await fs.rename(temporaryPath, targetPath);
+    })
+    .catch((error) => {
+      libraryMetadataCacheDirty = true;
+      console.warn('Unable to persist library metadata cache:', error.message);
+    });
+  return libraryMetadataCacheWrite;
+}
+
+function musicMetadataModule() {
+  if (!musicMetadataModulePromise) musicMetadataModulePromise = import('music-metadata');
+  return musicMetadataModulePromise;
 }
 
 async function readAssistantConfig() {
@@ -384,11 +447,6 @@ async function walkDirectory(directory, result = { files: [], skipped: [] }) {
   return result;
 }
 
-function pictureToDataUrl(picture) {
-  if (!picture?.data || !picture?.format) return null;
-  return `data:${picture.format};base64,${Buffer.from(picture.data).toString('base64')}`;
-}
-
 function normalizeEmbeddedLyrics(lyrics, audioFormat = {}) {
   if (!Array.isArray(lyrics) || !lyrics.length) return null;
   const selected = lyrics.find((item) => item?.syncText?.length) || lyrics.find((item) => item?.text);
@@ -447,34 +505,112 @@ async function findSidecarLyrics(filePath) {
 async function getTrackInfo(filePath) {
   const normalizedPath = path.resolve(filePath);
   const stats = await fs.stat(normalizedPath);
-  let metadata = {};
-  try {
-    const { parseFile } = await import('music-metadata');
-    metadata = await parseFile(normalizedPath, { duration: true, skipCovers: false });
-  } catch (error) {
-    if (['EACCES', 'EPERM'].includes(error.code)) throw error;
-    console.warn(`Unable to parse metadata: ${normalizedPath}`, error.message);
+  const signature = trackFileSignature(stats);
+  const cache = await readLibraryMetadataCache();
+  const key = cacheKey(normalizedPath);
+  let cached = readCachedMetadata(cache, key, signature);
+  if (!cached) {
+    let metadata = {};
+    try {
+      const { parseFile } = await musicMetadataModule();
+      metadata = await parseFile(normalizedPath, { duration: true, skipCovers: true });
+    } catch (error) {
+      if (['EACCES', 'EPERM'].includes(error.code)) throw error;
+      console.warn(`Unable to parse metadata: ${normalizedPath}`, error.message);
+    }
+    const common = metadata.common || {};
+    const format = metadata.format || {};
+    cached = writeCachedMetadata(cache, key, {
+      signature,
+      title: common.title || '',
+      artist: common.artist || common.albumartist || '',
+      album: common.album || '',
+      year: common.year || null,
+      duration: Number.isFinite(format.duration) ? format.duration : 0,
+      embeddedLyrics: normalizeEmbeddedLyrics(common.lyrics, format),
+      coverMissingFor: null
+    });
+    markLibraryMetadataCacheDirty();
   }
-
-  const common = metadata.common || {};
-  const format = metadata.format || {};
   const filename = path.basename(normalizedPath, path.extname(normalizedPath));
-  const embeddedLyrics = normalizeEmbeddedLyrics(common.lyrics, format);
-  const lyrics = embeddedLyrics || await findSidecarLyrics(normalizedPath);
   return {
     id: stableTrackId(normalizedPath),
     path: normalizedPath,
     url: pathToFileURL(normalizedPath).href,
-    title: common.title || filename,
-    artist: common.artist || common.albumartist || '未知艺术家',
-    album: common.album || '未知专辑',
-    year: common.year || null,
-    duration: Number.isFinite(format.duration) ? format.duration : 0,
-    cover: pictureToDataUrl(common.picture?.[0]),
-    lyrics,
+    title: cached.title || filename,
+    artist: cached.artist || '未知艺术家',
+    album: cached.album || '未知专辑',
+    year: cached.year || null,
+    duration: Number.isFinite(cached.duration) ? cached.duration : 0,
+    cover: null,
+    coverState: cached.coverMissingFor === signature ? 'none' : 'idle',
+    lyrics: null,
+    lyricsState: 'idle',
     size: stats.size,
     modifiedAt: stats.mtimeMs
   };
+}
+
+async function getTrackLyrics(filePath) {
+  const normalizedPath = path.resolve(filePath);
+  const stats = await fs.stat(normalizedPath);
+  const signature = trackFileSignature(stats);
+  const cache = await readLibraryMetadataCache();
+  let cached = readCachedMetadata(cache, cacheKey(normalizedPath), signature);
+  if (!cached) {
+    await getTrackInfo(normalizedPath);
+    cached = readCachedMetadata(cache, cacheKey(normalizedPath), signature);
+    await persistLibraryMetadataCache();
+  }
+  return cached?.embeddedLyrics || findSidecarLyrics(normalizedPath);
+}
+
+async function getTrackCover(filePath) {
+  const normalizedPath = path.resolve(filePath);
+  const stats = await fs.stat(normalizedPath);
+  const signature = trackFileSignature(stats);
+  const key = cacheKey(normalizedPath);
+  const cache = await readLibraryMetadataCache();
+  let cached = readCachedMetadata(cache, key, signature);
+  if (!cached) {
+    await getTrackInfo(normalizedPath);
+    cached = readCachedMetadata(cache, key, signature);
+  }
+  if (cached?.coverMissingFor === signature) return null;
+
+  const idHash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 24);
+  const signatureHash = crypto.createHash('sha256').update(signature).digest('hex').slice(0, 12);
+  const thumbnailPath = path.join(coverCacheDirectory(), `${idHash}-${signatureHash}-${COVER_THUMBNAIL_SIZE}.png`);
+  if (await pathExists(thumbnailPath)) return pathToFileURL(thumbnailPath).href;
+
+  let picture = null;
+  try {
+    const { parseFile } = await musicMetadataModule();
+    const metadata = await parseFile(normalizedPath, { duration: false, skipCovers: false });
+    picture = metadata.common?.picture?.[0] || null;
+  } catch (error) {
+    if (['EACCES', 'EPERM'].includes(error.code)) throw error;
+    console.warn(`Unable to read cover: ${normalizedPath}`, error.message);
+  }
+  if (!picture?.data) {
+    if (cached) {
+      cached.coverMissingFor = signature;
+      markLibraryMetadataCacheDirty();
+      await persistLibraryMetadataCache();
+    }
+    return null;
+  }
+
+  const image = nativeImage.createFromBuffer(Buffer.from(picture.data));
+  if (image.isEmpty()) return null;
+  const thumbnail = image.resize({
+    width: COVER_THUMBNAIL_SIZE,
+    height: COVER_THUMBNAIL_SIZE,
+    quality: 'good'
+  });
+  await fs.mkdir(coverCacheDirectory(), { recursive: true });
+  await fs.writeFile(thumbnailPath, thumbnail.toPNG());
+  return pathToFileURL(thumbnailPath).href;
 }
 
 async function loadTracks(paths) {
@@ -503,6 +639,7 @@ async function loadTracks(paths) {
   };
   const workerCount = Math.min(METADATA_CONCURRENCY, uniquePaths.length);
   await Promise.all(Array.from({ length: workerCount }, worker));
+  await persistLibraryMetadataCache();
   if (permissionFailures.length && mainWindow && !mainWindow.isDestroyed()) {
     const preview = permissionFailures.slice(0, 6).map((filePath) => `• ${filePath}`).join('\n');
     const remaining = permissionFailures.length > 6 ? `\n另有 ${permissionFailures.length - 6} 个文件未列出。` : '';
@@ -564,6 +701,26 @@ ipcMain.handle('library:restore', async (_event, paths) => {
 ipcMain.handle('library:load-dropped', async (_event, paths) => {
   const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
   return loadTracks(validPaths);
+});
+
+ipcMain.handle('track:get-cover', async (_event, filePath) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) return null;
+  try {
+    return await getTrackCover(filePath);
+  } catch (error) {
+    console.warn(`Unable to load track cover: ${filePath}`, error.message);
+    return null;
+  }
+});
+
+ipcMain.handle('track:get-lyrics', async (_event, filePath) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) return null;
+  try {
+    return await getTrackLyrics(filePath);
+  } catch (error) {
+    console.warn(`Unable to load track lyrics: ${filePath}`, error.message);
+    return null;
+  }
 });
 
 ipcMain.handle('track:get-path-status', async (_event, filePath) => {
