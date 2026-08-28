@@ -64,6 +64,12 @@ function cacheKey(filePath) {
   return stableTrackId(path.resolve(filePath));
 }
 
+function coverThumbnailPath(key, signature) {
+  const idHash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 24);
+  const signatureHash = crypto.createHash('sha256').update(signature).digest('hex').slice(0, 12);
+  return path.join(coverCacheDirectory(), `${idHash}-${signatureHash}-${COVER_THUMBNAIL_SIZE}.png`);
+}
+
 function readLibraryMetadataCache() {
   if (!libraryMetadataCachePromise) {
     libraryMetadataCachePromise = fs.readFile(libraryMetadataCachePath(), 'utf8')
@@ -533,6 +539,8 @@ async function getTrackInfo(filePath) {
     markLibraryMetadataCacheDirty();
   }
   const filename = path.basename(normalizedPath, path.extname(normalizedPath));
+  const thumbnailPath = coverThumbnailPath(key, signature);
+  const cover = await pathExists(thumbnailPath) ? pathToFileURL(thumbnailPath).href : null;
   return {
     id: stableTrackId(normalizedPath),
     path: normalizedPath,
@@ -542,8 +550,8 @@ async function getTrackInfo(filePath) {
     album: cached.album || '未知专辑',
     year: cached.year || null,
     duration: Number.isFinite(cached.duration) ? cached.duration : 0,
-    cover: null,
-    coverState: cached.coverMissingFor === signature ? 'none' : 'idle',
+    cover,
+    coverState: cover ? 'loaded' : cached.coverMissingFor === signature ? 'none' : 'idle',
     lyrics: null,
     lyricsState: 'idle',
     size: stats.size,
@@ -578,9 +586,7 @@ async function getTrackCover(filePath) {
   }
   if (cached?.coverMissingFor === signature) return null;
 
-  const idHash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 24);
-  const signatureHash = crypto.createHash('sha256').update(signature).digest('hex').slice(0, 12);
-  const thumbnailPath = path.join(coverCacheDirectory(), `${idHash}-${signatureHash}-${COVER_THUMBNAIL_SIZE}.png`);
+  const thumbnailPath = coverThumbnailPath(key, signature);
   if (await pathExists(thumbnailPath)) return pathToFileURL(thumbnailPath).href;
 
   let picture = null;
