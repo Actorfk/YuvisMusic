@@ -1,6 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const audio = $('#audio');
 const { migrateStoredTrackIds } = window.YuvisTrackIdentity;
+const { computeVirtualWindow } = window.YuvisVirtualList;
 
 const APPEARANCE_THEMES = {
   crimson: { color: '#cf0a2c', bright: '#e11436', soft: '#fff0f2', rgb: '207, 10, 44' },
@@ -87,6 +88,16 @@ let coverObserver = null;
 const coverLoadQueue = [];
 let activeCoverLoads = 0;
 let playlistArtworkRenderTimer = null;
+let renderedLibraryTracks = [];
+let libraryVirtualRangeKey = '';
+let queueVirtualRangeKey = '';
+let libraryScrollFrame = 0;
+let queueScrollFrame = 0;
+let searchRenderTimer = null;
+const LIBRARY_VIRTUAL_THRESHOLD = 500;
+const QUEUE_VIRTUAL_THRESHOLD = 300;
+const LIBRARY_ROW_HEIGHT = 62;
+const QUEUE_ROW_HEIGHT = 60;
 
 function readStorage(key, fallback) {
   try {
@@ -268,7 +279,9 @@ const state = {
   listeningStats: normalizeListeningStats(readStorage('listeningStats', { days: {} })),
   listeningSession: null,
   listeningPersistTicks: 0,
-  trackById: new Map()
+  trackById: new Map(),
+  trackByPath: new Map(),
+  trackSearchText: new Map()
 };
 
 const viewNames = {
@@ -439,6 +452,11 @@ function coverStyle(track) {
 
 function rebuildTrackIndex() {
   state.trackById = new Map(state.library.map((track) => [track.id, track]));
+  state.trackByPath = new Map(state.library.map((track) => [trackPathKey(track.path), track]));
+  state.trackSearchText = new Map(state.library.map((track) => [
+    track.id,
+    [track.title, track.artist, track.album].join('\n').toLocaleLowerCase('zh-CN')
+  ]));
 }
 
 function setLibrary(tracks) {
@@ -1113,6 +1131,21 @@ function applyPlaybackSettings() {
   renderPlaybackSettings();
 }
 
+function renderLibraryCacheStatus(status) {
+  if (!status) return;
+  $('#cacheSizeValue').textContent = formatSize(status.totalBytes);
+  $('#cacheDetailValue').textContent = `${status.metadataEntries} 条元数据 · ${status.coverFiles} 张封面缩略图`;
+}
+
+async function refreshLibraryCacheStatus() {
+  try {
+    renderLibraryCacheStatus(await window.desktop.getLibraryCacheStatus());
+  } catch (error) {
+    $('#cacheSizeValue').textContent = '暂时无法读取';
+    console.warn('Unable to read library cache status:', error.message);
+  }
+}
+
 function showSettingsSection(section) {
   const names = {
     playback: ['播放设置', '控制音量与默认播放行为'],
@@ -1121,6 +1154,7 @@ function showSettingsSection(section) {
     gameLyrics: ['游戏歌词', '可拖动并吸附屏幕左右边缘的透明置顶覆盖层'],
     fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
     appearance: ['外观设置', '选择应用界面的主题主色'],
+    storage: ['存储与性能', '管理缓存并查看大曲库优化状态'],
     yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
   };
   state.settingsSection = names[section] ? section : 'playback';
@@ -1132,6 +1166,7 @@ function showSettingsSection(section) {
   document.querySelectorAll('[data-settings-panel]').forEach((panel) => {
     panel.hidden = panel.dataset.settingsPanel !== state.settingsSection;
   });
+  if (state.settingsSection === 'storage') refreshLibraryCacheStatus();
 }
 
 function openSettings(section = 'playback') {
@@ -1358,7 +1393,7 @@ function closePlaybackFailure() {
 }
 
 function removeFailedTrackFromLists() {
-  const track = state.library.find((item) => item.id === state.playbackFailureTrackId);
+  const track = state.trackById.get(state.playbackFailureTrackId);
   if (!track) return closePlaybackFailure();
   const pathKey = trackPathKey(track.path);
   const queueBefore = state.queue.length;
@@ -1389,24 +1424,19 @@ function activePlaylist() {
 }
 
 function currentTrack() {
-  return state.library.find((track) => track.id === state.currentId);
+  return state.trackById.get(state.currentId) || null;
 }
 
 function getVisibleTracks() {
-  let tracks = [...state.library];
-  if (state.view === 'favorite') tracks = tracks.filter((track) => state.favorites.has(track.id));
+  let tracks;
+  if (state.view === 'favorite') tracks = state.library.filter((track) => state.favorites.has(track.id));
   if (state.view === 'recent') {
-    const order = new Map(state.history.map((id, index) => [id, index]));
-    tracks = tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id) - order.get(b.id));
-  }
-  if (state.view === 'playlist') {
-    const paths = new Set((activePlaylist()?.trackPaths || []).map(trackPathKey));
-    tracks = tracks.filter((track) => paths.has(trackPathKey(track.path)));
-  }
+    tracks = state.history.map((id) => state.trackById.get(id)).filter(Boolean);
+  } else if (state.view === 'playlist') tracks = playlistTracks(activePlaylist());
+  else if (!tracks) tracks = [...state.library];
   const query = state.search.trim().toLocaleLowerCase('zh-CN');
   if (query) {
-    tracks = tracks.filter((track) => [track.title, track.artist, track.album]
-      .some((value) => value.toLocaleLowerCase('zh-CN').includes(query)));
+    tracks = tracks.filter((track) => state.trackSearchText.get(track.id)?.includes(query));
   }
   if (state.view !== 'recent') {
     tracks.sort((a, b) => state.sortAscending
@@ -1417,8 +1447,7 @@ function getVisibleTracks() {
 }
 
 function playlistTracks(playlist) {
-  const paths = new Set((playlist.trackPaths || []).map(trackPathKey));
-  return state.library.filter((track) => paths.has(trackPathKey(track.path)));
+  return (playlist?.trackPaths || []).map((trackPath) => state.trackByPath.get(trackPathKey(trackPath))).filter(Boolean);
 }
 
 function playlistArtwork(playlist, size = 'small') {
@@ -1444,10 +1473,64 @@ function renderPlaylistNav() {
   applyCoverImages($('#playlistNav'));
 }
 
+function trackIndexMarkup(track, index) {
+  const failure = state.failedTracks.get(track.id);
+  if (failure) return '<span class="failed-track-indicator" role="img" aria-label="播放异常"><svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>';
+  if (track.id === state.currentId) return `<span class="playing-indicator" role="img" aria-label="${audio.paused ? '已暂停' : '正在播放'}"><i></i><i></i><i></i></span>`;
+  return String(index + 1).padStart(2, '0');
+}
+
+function renderTrackRow(track, index) {
+  const failure = state.failedTracks.get(track.id);
+  const failureLabel = playbackFailureLabel(failure);
+  return `
+    <div class="track-row ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-track-id="${escapeHtml(track.id)}" data-track-index="${index}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
+      <span class="track-index">${trackIndexMarkup(track, index)}</span>
+      <span class="track-main"><span class="track-identity">
+        <span class="track-cover" ${coverStyle(track)}>${track.cover ? '' : '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v11"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="15" r="3"/></svg>'}</span>
+        <span class="track-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${failureLabel}</em>` : ''}</span></span>
+      </span></span>
+      <span class="track-album">${escapeHtml(track.album)}</span>
+      <span class="track-date">${new Date(track.modifiedAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
+      <span class="track-time">${formatTime(track.duration)}</span>
+      <span class="track-actions">
+        <button class="add-playlist-track" data-add-playlist-id="${escapeHtml(track.id)}" aria-label="添加到歌单"><svg viewBox="0 0 24 24"><path d="M4 6h10M4 11h10M4 16h7M18 13v7M14.5 16.5h7"/></svg></button>
+        <button class="favorite-track ${state.favorites.has(track.id) ? 'active' : ''}" data-favorite-id="${escapeHtml(track.id)}" aria-label="喜欢"><svg viewBox="0 0 24 24"><path d="M20.8 5.8a5.5 5.5 0 0 0-7.8 0L12 6.9l-1.1-1.1a5.5 5.5 0 0 0-7.7 7.8L12 22l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z" /></svg></button>
+      </span>
+    </div>`;
+}
+
+function libraryVirtualWindow(tracks) {
+  const scroller = $('.main-content');
+  const list = $('#trackList');
+  const listTop = list.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+  return computeVirtualWindow({
+    total: tracks.length,
+    scrollTop: scroller.scrollTop - listTop,
+    viewportHeight: scroller.clientHeight,
+    rowHeight: LIBRARY_ROW_HEIGHT,
+    overscan: 8,
+    threshold: LIBRARY_VIRTUAL_THRESHOLD
+  });
+}
+
+function renderLibraryRows(tracks, { force = false } = {}) {
+  const list = $('#trackList');
+  const range = libraryVirtualWindow(tracks);
+  const rangeKey = `${range.start}:${range.end}:${tracks.length}`;
+  if (!force && rangeKey === libraryVirtualRangeKey) return;
+  libraryVirtualRangeKey = rangeKey;
+  releaseCoverImages(list);
+  const rows = tracks.slice(range.start, range.end).map((track, offset) => renderTrackRow(track, range.start + offset)).join('');
+  list.innerHTML = `${range.before ? '<div class="virtual-list-spacer" data-virtual-spacer="before" aria-hidden="true"></div>' : ''}${rows}${range.after ? '<div class="virtual-list-spacer" data-virtual-spacer="after" aria-hidden="true"></div>' : ''}`;
+  if (range.before) list.querySelector('[data-virtual-spacer="before"]').style.height = `${range.before}px`;
+  if (range.after) list.querySelector('[data-virtual-spacer="after"]').style.height = `${range.after}px`;
+  applyCoverImages(list);
+}
+
 function renderLibrary() {
   const tracks = getVisibleTracks();
-  const list = $('#trackList');
-  releaseCoverImages(list);
+  renderedLibraryTracks = tracks;
   $('#trackSummary').textContent = `${tracks.length} 首歌曲`;
   $('#libraryBadge').textContent = state.library.length;
   $('#favoriteBadge').textContent = state.favorites.size;
@@ -1464,49 +1547,64 @@ function renderLibrary() {
     emptyText.textContent = state.library.length ? '换一个关键词试试看' : '拖入本地音乐文件，或点击按钮开始导入';
     emptyButton.textContent = state.library.length ? '清除搜索' : '选择音乐文件';
   }
-  list.innerHTML = tracks.map((track, index) => {
-    const failure = state.failedTracks.get(track.id);
-    const failureLabel = playbackFailureLabel(failure);
-    return `
-    <div class="track-row ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-track-id="${escapeHtml(track.id)}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
-      <span class="track-index">${failure
-        ? '<span class="failed-track-indicator" role="img" aria-label="播放异常"><svg viewBox="0 0 24 24"><path d="M12 4v9M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>'
-        : track.id === state.currentId
-          ? `<span class="playing-indicator" role="img" aria-label="${audio.paused ? '已暂停' : '正在播放'}"><i></i><i></i><i></i></span>`
-          : String(index + 1).padStart(2, '0')}</span>
-      <span class="track-main"><span class="track-identity">
-        <span class="track-cover" ${coverStyle(track)}>${track.cover ? '' : '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v11"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="15" r="3"/></svg>'}</span>
-        <span class="track-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${failureLabel}</em>` : ''}</span></span>
-      </span></span>
-      <span class="track-album">${escapeHtml(track.album)}</span>
-      <span class="track-date">${new Date(track.modifiedAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
-      <span class="track-time">${formatTime(track.duration)}</span>
-      <span class="track-actions">
-        <button class="add-playlist-track" data-add-playlist-id="${escapeHtml(track.id)}" aria-label="添加到歌单"><svg viewBox="0 0 24 24"><path d="M4 6h10M4 11h10M4 16h7M18 13v7M14.5 16.5h7"/></svg></button>
-        <button class="favorite-track ${state.favorites.has(track.id) ? 'active' : ''}" data-favorite-id="${escapeHtml(track.id)}" aria-label="喜欢"><svg viewBox="0 0 24 24"><path d="M20.8 5.8a5.5 5.5 0 0 0-7.8 0L12 6.9l-1.1-1.1a5.5 5.5 0 0 0-7.7 7.8L12 22l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z" /></svg></button>
-      </span>
-    </div>`;
-  }).join('');
-  applyCoverImages(list);
+  libraryVirtualRangeKey = '';
+  renderLibraryRows(tracks, { force: true });
 }
 
-function renderQueue() {
-  const list = $('#queueList');
-  releaseCoverImages(list);
-  if (!state.queue.length) {
-    list.innerHTML = '<div class="queue-empty"><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div><span>队列中暂无歌曲</span></div>';
-    return;
-  }
-  list.innerHTML = state.queue.map((track) => {
-    const failure = state.failedTracks.get(track.id);
-    return `
+function renderQueueItem(track) {
+  const failure = state.failedTracks.get(track.id);
+  return `
     <div class="queue-item ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-queue-id="${escapeHtml(track.id)}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
       <span class="queue-cover" ${coverStyle(track)}>${track.cover ? '' : '♪'}</span>
       <span class="queue-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${playbackFailureLabel(failure)}</em>` : ''}</span></span>
       <button class="remove-queue" data-remove-id="${escapeHtml(track.id)}" aria-label="移出队列"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </div>`;
-  }).join('');
+}
+
+function renderQueueRows({ force = false } = {}) {
+  const list = $('#queueList');
+  if (!state.queue.length) {
+    releaseCoverImages(list);
+    list.innerHTML = '<div class="queue-empty"><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div><span>队列中暂无歌曲</span></div>';
+    queueVirtualRangeKey = '';
+    return;
+  }
+  const range = computeVirtualWindow({
+    total: state.queue.length,
+    scrollTop: list.scrollTop,
+    viewportHeight: list.clientHeight,
+    rowHeight: QUEUE_ROW_HEIGHT,
+    overscan: 6,
+    threshold: QUEUE_VIRTUAL_THRESHOLD
+  });
+  const rangeKey = `${range.start}:${range.end}:${state.queue.length}`;
+  if (!force && rangeKey === queueVirtualRangeKey) return;
+  queueVirtualRangeKey = rangeKey;
+  releaseCoverImages(list);
+  const rows = state.queue.slice(range.start, range.end).map(renderQueueItem).join('');
+  list.innerHTML = `${range.before ? '<div class="virtual-list-spacer" data-virtual-spacer="before" aria-hidden="true"></div>' : ''}${rows}${range.after ? '<div class="virtual-list-spacer" data-virtual-spacer="after" aria-hidden="true"></div>' : ''}`;
+  if (range.before) list.querySelector('[data-virtual-spacer="before"]').style.height = `${range.before}px`;
+  if (range.after) list.querySelector('[data-virtual-spacer="after"]').style.height = `${range.after}px`;
   applyCoverImages(list);
+}
+
+function renderQueue() {
+  queueVirtualRangeKey = '';
+  renderQueueRows({ force: true });
+}
+
+function updateRenderedPlaybackState(previousId = null) {
+  document.querySelectorAll('#trackList [data-track-id]').forEach((row) => {
+    const track = state.trackById.get(row.dataset.trackId);
+    if (!track || (previousId && ![previousId, state.currentId].includes(track.id))) return;
+    row.classList.toggle('current', track.id === state.currentId);
+    const index = Number(row.dataset.trackIndex);
+    const indexElement = row.querySelector('.track-index');
+    if (indexElement) indexElement.innerHTML = trackIndexMarkup(track, index);
+  });
+  document.querySelectorAll('#queueList [data-queue-id]').forEach((row) => {
+    if (!previousId || [previousId, state.currentId].includes(row.dataset.queueId)) row.classList.toggle('current', row.dataset.queueId === state.currentId);
+  });
 }
 
 function renderNowPlaying() {
@@ -2101,12 +2199,11 @@ function toggleQueueMenu() {
 }
 
 function mergeTracks(newTracks, { notify = true } = {}) {
-  const existing = new Set(state.library.map((track) => trackPathKey(track.path)));
   const additions = [];
   newTracks.forEach((track) => {
     const key = trackPathKey(track.path);
-    if (!key || existing.has(key)) return;
-    existing.add(key);
+    if (!key || state.trackByPath.has(key)) return;
+    state.trackByPath.set(key, track);
     additions.push(track);
   });
   state.library.push(...additions);
@@ -2178,7 +2275,7 @@ async function importDroppedMusic(paths, playlistId = null) {
   const playlistPaths = new Set((playlist.trackPaths || []).map(trackPathKey));
   let playlistAdditions = 0;
   tracks.forEach((droppedTrack) => {
-    const libraryTrack = state.library.find((track) => trackPathKey(track.path) === trackPathKey(droppedTrack.path));
+    const libraryTrack = state.trackByPath.get(trackPathKey(droppedTrack.path));
     const key = trackPathKey(libraryTrack?.path);
     if (!libraryTrack || playlistPaths.has(key)) return;
     playlistPaths.add(key);
@@ -2200,6 +2297,7 @@ function addToHistory(id) {
 
 function loadTrack(track, autoplay = true) {
   if (!track) return;
+  const previousId = state.currentId;
   beginListeningSession(track);
   state.currentId = track.id;
   state.playbackFailureTrackId = null;
@@ -2211,7 +2309,7 @@ function loadTrack(track, autoplay = true) {
   $('#playerCover').style.backgroundImage = track.cover ? `url('${track.cover}')` : '';
   $('.cover-note').style.display = track.cover ? 'none' : 'block';
   $('#playerFavoriteBtn').classList.toggle('active', state.favorites.has(track.id));
-  renderLibrary();
+  updateRenderedPlaybackState(previousId);
   renderQueue();
   renderNowPlaying();
   ensureTrackCover(track, { priority: true });
@@ -2260,7 +2358,8 @@ function toggleFavorite(id) {
   localStorage.setItem('favorites', JSON.stringify([...state.favorites]));
   $('#favoriteBadge').textContent = state.favorites.size;
   $('#playerFavoriteBtn').classList.toggle('active', state.favorites.has(state.currentId));
-  renderLibrary();
+  if (state.view === 'favorite') renderLibrary();
+  else document.querySelectorAll(`[data-favorite-id="${CSS.escape(id)}"]`).forEach((button) => button.classList.toggle('active', state.favorites.has(id)));
   renderNowPlaying();
   updateStats();
 }
@@ -2295,7 +2394,7 @@ function createPlaylist(name) {
   };
   state.playlists.push(playlist);
   if (state.pendingTrackId) {
-    const track = state.library.find((item) => item.id === state.pendingTrackId);
+    const track = state.trackById.get(state.pendingTrackId);
     if (track) playlist.trackPaths.push(track.path);
     state.pendingTrackId = null;
   }
@@ -2310,7 +2409,7 @@ function createPlaylist(name) {
 function openPlaylistPicker(trackId) {
   if (!trackId) return showToast('请先选择一首音乐');
   state.pendingTrackId = trackId;
-  const track = state.library.find((item) => item.id === trackId);
+  const track = state.trackById.get(trackId);
   $('#addTrackHint').textContent = track ? `将「${track.title}」添加到` : '选择一个歌单';
   $('#playlistPickerList').innerHTML = state.playlists.length
     ? state.playlists.map((playlist) => `
@@ -2326,7 +2425,7 @@ function openPlaylistPicker(trackId) {
 
 function addTrackToPlaylist(playlistId) {
   const playlist = state.playlists.find((item) => item.id === playlistId);
-  const track = state.library.find((item) => item.id === state.pendingTrackId);
+  const track = state.trackById.get(state.pendingTrackId);
   if (!playlist || !track) return;
   if (playlist.trackPaths.some((trackPath) => trackPathKey(trackPath) === trackPathKey(track.path))) {
     showToast('这首歌已经在歌单里了');
@@ -2346,7 +2445,7 @@ $('#trackList').addEventListener('dblclick', (event) => {
   const row = event.target.closest('[data-track-id]');
   if (!row) return;
   state.queue = getVisibleTracks();
-  loadTrack(state.library.find((track) => track.id === row.dataset.trackId));
+  loadTrack(state.trackById.get(row.dataset.trackId));
 });
 $('#trackList').addEventListener('click', (event) => {
   const favorite = event.target.closest('[data-favorite-id]');
@@ -2369,7 +2468,7 @@ $('#queueList').addEventListener('click', (event) => {
     return;
   }
   const item = event.target.closest('[data-queue-id]');
-  if (item) loadTrack(state.library.find((track) => track.id === item.dataset.queueId));
+  if (item) loadTrack(state.trackById.get(item.dataset.queueId));
 });
 $('#playlistPickerList').addEventListener('click', (event) => {
   const item = event.target.closest('[data-picker-playlist-id]');
@@ -2399,6 +2498,24 @@ $('#sidebarSettingsBtn').addEventListener('click', () => openSettings('playback'
 $('.settings-sidebar nav').addEventListener('click', (event) => {
   const button = event.target.closest('[data-settings-section]');
   if (button) showSettingsSection(button.dataset.settingsSection);
+});
+$('#cleanLibraryCacheBtn').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = '正在清理…';
+  try {
+    const result = await window.desktop.cleanLibraryCache();
+    renderLibraryCacheStatus(result.after || result);
+    showToast(result.reclaimedBytes
+      ? `已释放 ${formatSize(result.reclaimedBytes)} 缓存空间`
+      : '缓存已经是干净的');
+  } catch (error) {
+    console.warn('Unable to clean library cache:', error.message);
+    showToast('缓存清理失败，请稍后重试');
+  } finally {
+    button.disabled = false;
+    button.textContent = '立即清理缓存';
+  }
 });
 $('.shortcut-setting-list').addEventListener('click', (event) => {
   const button = event.target.closest('[data-shortcut-action]');
@@ -2738,7 +2855,25 @@ document.querySelectorAll('.nav-item[data-view]').forEach((item) => item.addEven
   state.view = item.dataset.view;
   renderView();
 }));
-$('#searchInput').addEventListener('input', (event) => { state.search = event.target.value; renderLibrary(); });
+$('#searchInput').addEventListener('input', (event) => {
+  state.search = event.target.value;
+  clearTimeout(searchRenderTimer);
+  searchRenderTimer = setTimeout(renderLibrary, 120);
+});
+$('.main-content').addEventListener('scroll', () => {
+  if (renderedLibraryTracks.length < LIBRARY_VIRTUAL_THRESHOLD || libraryScrollFrame) return;
+  libraryScrollFrame = requestAnimationFrame(() => {
+    libraryScrollFrame = 0;
+    renderLibraryRows(renderedLibraryTracks);
+  });
+}, { passive: true });
+$('#queueList').addEventListener('scroll', () => {
+  if (state.queue.length < QUEUE_VIRTUAL_THRESHOLD || queueScrollFrame) return;
+  queueScrollFrame = requestAnimationFrame(() => {
+    queueScrollFrame = 0;
+    renderQueueRows();
+  });
+}, { passive: true });
 
 $('#createPlaylistBtn').addEventListener('click', openCreatePlaylist);
 $('#pickerCreatePlaylistBtn').addEventListener('click', openCreatePlaylist);
@@ -2902,13 +3037,13 @@ audio.addEventListener('play', () => {
     state.historyConfirmedTrackId = track.id;
     updateStats();
   }
-  renderLibrary();
+  updateRenderedPlaybackState();
   runLyricClock();
 });
 audio.addEventListener('pause', () => {
   document.body.classList.remove('is-playing');
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-  renderLibrary();
+  updateRenderedPlaybackState();
   stopLyricClock();
   updateLyricPosition(audio.currentTime);
 });

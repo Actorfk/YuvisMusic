@@ -5,9 +5,13 @@ const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
 const { stableTrackId } = require('./track-identity');
 const {
+  DEFAULT_CACHE_MAX_AGE_MS,
+  DEFAULT_CACHE_MAX_ENTRIES,
   createLibraryMetadataCache,
   normalizeLibraryMetadataCache,
+  pruneLibraryMetadataCache,
   readCachedMetadata,
+  touchCachedMetadata,
   trackFileSignature,
   writeCachedMetadata
 } = require('./library-cache');
@@ -16,7 +20,10 @@ const AUDIO_EXTENSIONS = new Set([
   '.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'
 ]);
 const METADATA_CONCURRENCY = 6;
+const DIRECTORY_SCAN_CONCURRENCY = 8;
 const COVER_THUMBNAIL_SIZE = 512;
+const COVER_CACHE_MAX_BYTES = 512 * 1024 * 1024;
+const CACHE_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 let mainWindow;
 let desktopLyricsWindow;
@@ -32,6 +39,7 @@ let assistantConfigCache = null;
 let libraryMetadataCachePromise = null;
 let libraryMetadataCacheDirty = false;
 let libraryMetadataCacheWrite = Promise.resolve();
+let libraryCacheMaintenancePromise = null;
 let musicMetadataModulePromise = null;
 let desktopLyricsSettings = {
   dualLine: true,
@@ -64,10 +72,14 @@ function cacheKey(filePath) {
   return stableTrackId(path.resolve(filePath));
 }
 
-function coverThumbnailPath(key, signature) {
+function coverThumbnailName(key, signature) {
   const idHash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 24);
   const signatureHash = crypto.createHash('sha256').update(signature).digest('hex').slice(0, 12);
-  return path.join(coverCacheDirectory(), `${idHash}-${signatureHash}-${COVER_THUMBNAIL_SIZE}.png`);
+  return `${idHash}-${signatureHash}-${COVER_THUMBNAIL_SIZE}.png`;
+}
+
+function coverThumbnailPath(key, signature) {
+  return path.join(coverCacheDirectory(), coverThumbnailName(key, signature));
 }
 
 function readLibraryMetadataCache() {
@@ -101,6 +113,161 @@ async function persistLibraryMetadataCache() {
       console.warn('Unable to persist library metadata cache:', error.message);
     });
   return libraryMetadataCacheWrite;
+}
+
+async function coverCacheSnapshot() {
+  let entries = [];
+  try {
+    entries = await fs.readdir(coverCacheDirectory(), { withFileTypes: true });
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.warn('Unable to inspect cover cache:', error.message);
+    return [];
+  }
+  const fileEntries = entries.filter((entry) => entry.isFile());
+  const files = new Array(fileEntries.length);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < fileEntries.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const entry = fileEntries[index];
+      const filePath = path.join(coverCacheDirectory(), entry.name);
+      try {
+        const stats = await fs.stat(filePath);
+        files[index] = { name: entry.name, path: filePath, size: stats.size, mtimeMs: stats.mtimeMs };
+      } catch {
+        files[index] = null;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(16, fileEntries.length) }, worker));
+  return files.filter(Boolean);
+}
+
+async function libraryCacheStatus(cache = null) {
+  const metadataCache = cache || await readLibraryMetadataCache();
+  const coverFiles = await coverCacheSnapshot();
+  let metadataBytes = 0;
+  try {
+    metadataBytes = (await fs.stat(libraryMetadataCachePath())).size;
+  } catch { /* Cache file has not been written yet. */ }
+  const coverBytes = coverFiles.reduce((sum, file) => sum + file.size, 0);
+  return {
+    metadataEntries: Object.keys(metadataCache.entries).length,
+    coverFiles: coverFiles.length,
+    metadataBytes,
+    coverBytes,
+    totalBytes: metadataBytes + coverBytes,
+    lastMaintenanceAt: Number(metadataCache.lastMaintenanceAt) || 0
+  };
+}
+
+async function removeMissingMetadataEntries(cache) {
+  const candidates = Object.entries(cache.entries);
+  const removedKeys = [];
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < candidates.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const [key, entry] = candidates[index];
+      if (typeof entry?.filePath !== 'string' || !entry.filePath) {
+        removedKeys.push(key);
+        continue;
+      }
+      try {
+        await fs.stat(entry.filePath);
+      } catch (error) {
+        if (['ENOENT', 'ENOTDIR'].includes(error.code)) removedKeys.push(key);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(12, candidates.length) }, worker));
+  removedKeys.forEach((key) => delete cache.entries[key]);
+  return removedKeys;
+}
+
+async function cleanCoverCache(cache) {
+  const validNames = new Set(Object.entries(cache.entries).flatMap(([key, entry]) => (
+    typeof entry?.signature === 'string' ? [coverThumbnailName(key, entry.signature)] : []
+  )));
+  const files = await coverCacheSnapshot();
+  const removed = [];
+  const removedNames = new Set();
+  let retainedBytes = files.reduce((sum, file) => sum + file.size, 0);
+  const staleFiles = files.filter((file) => !validNames.has(file.name));
+  let nextStaleIndex = 0;
+  const removeStaleWorker = async () => {
+    while (nextStaleIndex < staleFiles.length) {
+      const index = nextStaleIndex;
+      nextStaleIndex += 1;
+      const file = staleFiles[index];
+      try {
+        await fs.unlink(file.path);
+        removed.push(file);
+        removedNames.add(file.name);
+      } catch (error) {
+        if (error.code !== 'ENOENT') console.warn(`Unable to remove stale cover cache: ${file.path}`, error.message);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(16, staleFiles.length) }, removeStaleWorker));
+  retainedBytes -= removed.reduce((sum, file) => sum + file.size, 0);
+  const retainedFiles = files
+    .filter((file) => validNames.has(file.name) && !removedNames.has(file.name))
+    .sort((left, right) => left.mtimeMs - right.mtimeMs);
+  for (const file of retainedFiles) {
+    if (retainedBytes <= COVER_CACHE_MAX_BYTES) break;
+    try {
+      await fs.unlink(file.path);
+      removed.push(file);
+      removedNames.add(file.name);
+      retainedBytes -= file.size;
+    } catch (error) {
+      if (error.code !== 'ENOENT') console.warn(`Unable to trim cover cache: ${file.path}`, error.message);
+    }
+  }
+  return { removedFiles: removed.length, removedBytes: removed.reduce((sum, file) => sum + file.size, 0) };
+}
+
+async function maintainLibraryCache({ force = false } = {}) {
+  if (libraryCacheMaintenancePromise) {
+    const pendingMaintenance = libraryCacheMaintenancePromise;
+    if (!force) return pendingMaintenance;
+    await pendingMaintenance;
+    return maintainLibraryCache({ force: true });
+  }
+  libraryCacheMaintenancePromise = (async () => {
+    const cache = await readLibraryMetadataCache();
+    const before = await libraryCacheStatus(cache);
+    const now = Date.now();
+    if (!force && now - cache.lastMaintenanceAt < CACHE_MAINTENANCE_INTERVAL_MS) {
+      return { ...before, before, after: before, removedMetadataEntries: 0, removedCoverFiles: 0, reclaimedBytes: 0, skipped: true };
+    }
+    const missingKeys = force ? await removeMissingMetadataEntries(cache) : [];
+    const { removedKeys } = pruneLibraryMetadataCache(cache, {
+      now,
+      maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+      maxEntries: DEFAULT_CACHE_MAX_ENTRIES
+    });
+    cache.lastMaintenanceAt = now;
+    markLibraryMetadataCacheDirty();
+    await persistLibraryMetadataCache();
+    const coverResult = await cleanCoverCache(cache);
+    const after = await libraryCacheStatus(cache);
+    return {
+      ...after,
+      before,
+      after,
+      removedMetadataEntries: new Set([...missingKeys, ...removedKeys]).size,
+      removedCoverFiles: coverResult.removedFiles,
+      reclaimedBytes: Math.max(0, before.totalBytes - after.totalBytes),
+      skipped: false
+    };
+  })().finally(() => {
+    libraryCacheMaintenancePromise = null;
+  });
+  return libraryCacheMaintenancePromise;
 }
 
 function musicMetadataModule() {
@@ -434,21 +601,26 @@ function setGameLyricsVisible(visible) {
   }
 }
 
-async function walkDirectory(directory, result = { files: [], skipped: [] }) {
-  let entries;
-  try {
-    entries = await fs.readdir(directory, { withFileTypes: true });
-  } catch (error) {
-    result.skipped.push({ path: directory, code: error.code || 'UNKNOWN' });
-    return result;
-  }
-  for (const entry of entries) {
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      await walkDirectory(fullPath, result);
-    } else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-      result.files.push(fullPath);
-    }
+async function walkDirectory(directory) {
+  const result = { files: [], skipped: [] };
+  const pendingDirectories = [directory];
+  while (pendingDirectories.length) {
+    const batch = pendingDirectories.splice(0, DIRECTORY_SCAN_CONCURRENCY);
+    const scanned = await Promise.all(batch.map(async (currentDirectory) => {
+      try {
+        return { directory: currentDirectory, entries: await fs.readdir(currentDirectory, { withFileTypes: true }) };
+      } catch (error) {
+        result.skipped.push({ path: currentDirectory, code: error.code || 'UNKNOWN' });
+        return null;
+      }
+    }));
+    scanned.filter(Boolean).forEach(({ directory: currentDirectory, entries }) => {
+      entries.forEach((entry) => {
+        const fullPath = path.join(currentDirectory, entry.name);
+        if (entry.isDirectory()) pendingDirectories.push(fullPath);
+        else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) result.files.push(fullPath);
+      });
+    });
   }
   return result;
 }
@@ -528,6 +700,8 @@ async function getTrackInfo(filePath) {
     const format = metadata.format || {};
     cached = writeCachedMetadata(cache, key, {
       signature,
+      filePath: normalizedPath,
+      lastAccessedAt: Date.now(),
       title: common.title || '',
       artist: common.artist || common.albumartist || '',
       album: common.album || '',
@@ -537,6 +711,13 @@ async function getTrackInfo(filePath) {
       coverMissingFor: null
     });
     markLibraryMetadataCacheDirty();
+  } else {
+    let changed = touchCachedMetadata(cached);
+    if (cached.filePath !== normalizedPath) {
+      cached.filePath = normalizedPath;
+      changed = true;
+    }
+    if (changed) markLibraryMetadataCacheDirty();
   }
   const filename = path.basename(normalizedPath, path.extname(normalizedPath));
   const thumbnailPath = coverThumbnailPath(key, signature);
@@ -574,6 +755,7 @@ async function getTrackLyrics(filePath) {
 }
 
 async function getTrackCover(filePath) {
+  if (libraryCacheMaintenancePromise) await libraryCacheMaintenancePromise;
   const normalizedPath = path.resolve(filePath);
   const stats = await fs.stat(normalizedPath);
   const signature = trackFileSignature(stats);
@@ -646,6 +828,7 @@ async function loadTracks(paths) {
   const workerCount = Math.min(METADATA_CONCURRENCY, uniquePaths.length);
   await Promise.all(Array.from({ length: workerCount }, worker));
   await persistLibraryMetadataCache();
+  maintainLibraryCache().catch((error) => console.warn('Unable to maintain library cache:', error.message));
   if (permissionFailures.length && mainWindow && !mainWindow.isDestroyed()) {
     const preview = permissionFailures.slice(0, 6).map((filePath) => `• ${filePath}`).join('\n');
     const remaining = permissionFailures.length > 6 ? `\n另有 ${permissionFailures.length - 6} 个文件未列出。` : '';
@@ -708,6 +891,10 @@ ipcMain.handle('library:load-dropped', async (_event, paths) => {
   const validPaths = Array.isArray(paths) ? paths.filter((item) => typeof item === 'string') : [];
   return loadTracks(validPaths);
 });
+
+ipcMain.handle('library:get-cache-status', () => libraryCacheStatus());
+
+ipcMain.handle('library:clean-cache', () => maintainLibraryCache({ force: true }));
 
 ipcMain.handle('track:get-cover', async (_event, filePath) => {
   if (typeof filePath !== 'string' || !filePath.trim()) return null;
