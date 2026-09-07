@@ -2152,6 +2152,7 @@ function renderView() {
   $('#sectionTitle').textContent = names[2];
   $('.main-header').hidden = false;
   $('.header-actions').hidden = ['stats', 'assistant'].includes(state.view);
+  $('#libraryImportBtn').hidden = state.view !== 'library';
   $('.library-section').hidden = ['stats', 'assistant'].includes(state.view);
   $('#statsSection').hidden = state.view !== 'stats';
   $('#assistantSection').hidden = state.view !== 'assistant';
@@ -2494,7 +2495,7 @@ $('#playlistPickerList').addEventListener('click', (event) => {
   if (item) addTrackToPlaylist(item.dataset.pickerPlaylistId);
 });
 
-$('#folderNavBtn').addEventListener('click', importFolder);
+$('#libraryImportBtn').addEventListener('click', importFolder);
 $('#emptyAddBtn').addEventListener('click', () => {
   if (state.view === 'playlist') {
     state.view = 'library';

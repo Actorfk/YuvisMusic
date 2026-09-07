@@ -104,6 +104,11 @@ body.playlist-file-drop::before { content: "释放文件，添加到当前歌单
 .eyebrow { color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .13em; margin: 0 0 5px; text-transform: uppercase; }
 h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .header-actions { flex: none; display: flex; gap: 10px; align-items: center; }
+.library-import-button { height: 40px; padding: 0 13px; display: flex; align-items: center; gap: 7px; flex: none; border: 1px solid rgba(var(--accent-rgb),.18); border-radius: 12px; color: var(--red); background: var(--red-soft); font-size: 12px; font-weight: 650; white-space: nowrap; }
+.library-import-button[hidden] { display: none; }
+.library-import-button:hover { border-color: rgba(var(--accent-rgb),.4); background: #fff; }
+.library-import-button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.library-import-button svg { width: 18px; height: 18px; flex: none; }
 .search-box { height: 40px; width: clamp(220px, 25vw, 320px); border: 1px solid var(--line); background: rgba(255,255,255,.72); border-radius: 12px; display: flex; align-items: center; padding: 0 10px 0 13px; gap: 9px; color: #aaa; transition: .2s; }
 .search-box:focus-within { border-color: rgba(var(--accent-rgb),.35); background: #fff; box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.06); }
 .search-box svg { width: 18px; }

@@ -74,11 +74,6 @@
             <svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-9"/><path d="M3 19h18"/></svg>
             <span>统计数据</span>
           </button>
-          <p class="nav-label second">本地</p>
-          <button class="nav-item" id="folderNavBtn">
-            <svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3z" /></svg>
-            <span>导入本地音乐</span>
-          </button>
           <div class="playlist-label-row">
             <p class="nav-label second">我的歌单</p>
             <button id="createPlaylistBtn" class="create-playlist-button" aria-label="创建歌单"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -99,6 +94,10 @@
             <h1 id="viewTitle">音乐库</h1>
           </div>
           <div class="header-actions">
+            <button class="library-import-button" id="libraryImportBtn" type="button" title="选择文件夹导入音乐">
+              <svg viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10v10H3z" /></svg>
+              <span>导入本地音乐</span>
+            </button>
             <label class="search-box">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
               <input id="searchInput" type="search" placeholder="搜索音乐、艺术家或专辑" />
