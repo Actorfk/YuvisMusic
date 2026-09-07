@@ -110,6 +110,10 @@
         <section class="now-playing-page" id="nowPlayingPage" aria-label="歌词播放页" hidden>
           <div class="now-playing-sheet">
             <button class="player-page-close" id="closeNowPlayingBtn" aria-label="收起播放页"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+            <div class="player-page-style" id="nowPlayingStyleOptions" role="group" aria-label="播放页样式">
+              <button data-now-playing-style="classic" aria-pressed="true" title="方形封面与侧面唱片">样式一</button>
+              <button data-now-playing-style="vinyl" aria-pressed="false" title="封面嵌入唱片并一起旋转">样式二</button>
+            </div>
             <button class="player-page-fullscreen" id="fullscreenLyricsBtn" aria-label="进入全屏歌词" aria-pressed="false" title="全屏歌词">
               <svg class="fullscreen-enter-icon" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/></svg>
               <svg class="fullscreen-exit-icon" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"/></svg>

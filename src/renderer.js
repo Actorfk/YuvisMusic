@@ -247,6 +247,7 @@ const state = {
     style: FULLSCREEN_LYRIC_STYLES.includes(savedFullscreenLyricsSettings.style) ? savedFullscreenLyricsSettings.style : 'immersive',
     fontSize: ['compact', 'standard', 'large'].includes(savedFullscreenLyricsSettings.fontSize) ? savedFullscreenLyricsSettings.fontSize : 'standard'
   },
+  nowPlayingStyle: savedAppSettings.nowPlayingStyle === 'vinyl' ? 'vinyl' : 'classic',
   appearanceSettings: {
     theme: Object.hasOwn(APPEARANCE_THEMES, savedAppearanceSettings.theme) ? savedAppearanceSettings.theme : 'crimson',
     fontSize: Object.hasOwn(FONT_SIZE_OPTIONS, savedAppearanceSettings.fontSize) ? savedAppearanceSettings.fontSize : 'standard'
@@ -855,6 +856,7 @@ function persistAppSettings() {
     desktopLyrics: state.desktopLyricsSettings,
     gameLyrics: state.gameLyricsSettings,
     fullscreenLyrics: state.fullscreenLyricsSettings,
+    nowPlayingStyle: state.nowPlayingStyle,
     equalizer: {
       enabled: state.equalizerSettings.enabled,
       gains: state.equalizerSettings.gains,
@@ -974,6 +976,22 @@ function applyAppearanceSettings({ persist = true } = {}) {
   applyFontSizeSetting();
   if (persist) persistAppSettings();
   renderAppearanceSettings();
+}
+
+function applyNowPlayingStyle({ persist = true } = {}) {
+  const vinylStyle = state.nowPlayingStyle === 'vinyl';
+  const cover = $('#detailCover');
+  const vinyl = $('.detail-vinyl');
+  // Reuse the same cover so lazy loading and track changes stay in sync.
+  if (vinylStyle) vinyl.append(cover);
+  else vinyl.before(cover);
+  document.body.dataset.nowPlayingStyle = state.nowPlayingStyle;
+  $('#nowPlayingStyleOptions').querySelectorAll('[data-now-playing-style]').forEach((button) => {
+    const active = button.dataset.nowPlayingStyle === state.nowPlayingStyle;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  if (persist) persistAppSettings();
 }
 
 function renderFullscreenLyricsSettings() {
@@ -2493,6 +2511,12 @@ $('#nextBtn').addEventListener('click', () => nextTrack(1));
 $('#playerFavoriteBtn').addEventListener('click', (event) => { event.stopPropagation(); toggleFavorite(state.currentId); });
 $('#chooseLyricsBtn').addEventListener('click', chooseLyricsForCurrentTrack);
 $('#fullscreenLyricsBtn').addEventListener('click', toggleFullscreenLyrics);
+$('#nowPlayingStyleOptions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-now-playing-style]');
+  if (!button) return;
+  state.nowPlayingStyle = button.dataset.nowPlayingStyle;
+  applyNowPlayingStyle();
+});
 $('#desktopLyricsBtn').addEventListener('click', toggleDesktopLyrics);
 $('#sidebarSettingsBtn').addEventListener('click', () => openSettings('playback'));
 $('.settings-sidebar nav').addEventListener('click', (event) => {
@@ -3118,6 +3142,7 @@ window.desktop.onGameLyricsSettings((settings) => {
 async function init() {
   applyAppearanceSettings({ persist: false });
   applyFullscreenLyricsSettings({ persist: false });
+  applyNowPlayingStyle({ persist: false });
   applyPlaybackSettings();
   applyEqualizerSettings({ persist: false });
   applyDesktopLyricsSettings();
