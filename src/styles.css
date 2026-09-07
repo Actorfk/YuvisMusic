@@ -899,7 +899,7 @@ body.fullscreen-lyrics:is([data-fullscreen-lyrics-style="original"], [data-fulls
 body[data-now-playing-style="vinyl"] .detail-vinyl { position: relative; width: min(100%, 29vw, 360px, 49vh); left: auto; right: auto; top: auto; translate: none; animation-name: recordSpin; }
 body.fullscreen-lyrics[data-now-playing-style="vinyl"] .detail-vinyl { width: min(100%, 33vw, 480px, 66vh); left: auto; right: auto; top: auto; translate: none; }
 body[data-now-playing-style="vinyl"] .detail-vinyl::before { inset: 19%; background: #08080a; box-shadow: 0 0 0 2px rgba(255,255,255,.08); }
-body[data-now-playing-style="vinyl"] .detail-vinyl::after { z-index: 3; }
+body[data-now-playing-style="vinyl"] .detail-vinyl::after { content: none; }
 body[data-now-playing-style="vinyl"] #detailCover { position: absolute; inset: 21%; width: 58%; border-radius: 50%; transform: none; box-shadow: 0 0 0 2px rgba(0,0,0,.5); font-size: clamp(36px, 5vw, 70px); }
 @keyframes recordSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes modalRise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
@@ -956,3 +956,16 @@ body[data-now-playing-style="vinyl"] #detailCover { position: absolute; inset: 2
   .stats-summary-card strong { margin-top: 12px; }
   .stats-panel { min-height: 250px; }
 }
+
+/* Center the cover plus the exposed half-disc as one piece of artwork. */
+body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(25vw, 310px); --classic-vinyl-size: min(22vw, 276px); }
+@media (max-width: 1060px) {
+  body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: 240px; --classic-vinyl-size: 215px; }
+}
+@media (max-height: 780px) {
+  body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(23vw, 235px); --classic-vinyl-size: min(21vw, 210px); }
+}
+body.fullscreen-lyrics[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(28vw, 430px); --classic-vinyl-size: min(25vw, 390px); }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"][data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(25vw, 310px); --classic-vinyl-size: min(22vw, 276px); }
+body[data-now-playing-style="classic"] #detailCover { position: absolute; width: var(--classic-cover-size); left: calc(50% - var(--classic-cover-size) / 2 - var(--classic-vinyl-size) / 4); top: 50%; transform: none; translate: 0 -50%; }
+body[data-now-playing-style="classic"] .detail-art-stage .detail-vinyl { width: var(--classic-vinyl-size); left: calc(50% + var(--classic-cover-size) / 2 - var(--classic-vinyl-size) * .75); right: auto; top: 50%; translate: 0 -50%; }
