@@ -761,8 +761,8 @@ body.is-playing .play-button .pause-icon { display: block; }
 .settings-save-note i, .reserved-inline i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.08); }
 .cache-summary-card { min-height: 104px; padding: 18px; display: flex; align-items: center; gap: 15px; border: 1px solid var(--line); border-radius: 15px; background: linear-gradient(145deg, #fff, #f7f6f4); }
 .cache-summary-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: 14px; color: var(--red); background: var(--red-soft); }
-.cache-summary-icon svg { width: 23px; }
-.cache-summary-card small, .cache-summary-card span { display: block; color: #999; font-size: 10px; }
+.cache-summary-icon svg { display: block; width: 23px; height: 23px; }
+.cache-summary-card > div > small, .cache-summary-card > div > span { display: block; color: #999; font-size: 10px; }
 .cache-summary-card strong { display: block; margin: 4px 0 5px; font-size: 23px; letter-spacing: -.03em; }
 .storage-performance-list { margin-top: 17px; border-top: 1px solid var(--line); }
 .storage-performance-list > div { min-height: 67px; padding: 13px 2px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid var(--line); }
