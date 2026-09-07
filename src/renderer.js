@@ -3118,11 +3118,14 @@ window.desktop.onDesktopLyricsLock((locked) => {
 });
 window.desktop.onDesktopLyricsSettings((settings) => {
   if (!settings || typeof settings !== 'object') return;
+  const appearanceChanged = ['dualLine', 'style', 'primaryColor', 'secondaryColor'].some((key) => (
+    Object.hasOwn(settings, key) && settings[key] !== state.desktopLyricsSettings[key]
+  ));
   state.desktopLyricsSettings = { ...state.desktopLyricsSettings, ...settings };
   persistAppSettings();
   renderDesktopLyricsSettings();
   updateDesktopLyrics();
-  showToast('桌面歌词外观已更新');
+  if (appearanceChanged) showToast('桌面歌词外观已更新');
 });
 window.desktop.onGameLyricsVisibility((visible) => {
   if (state.gameLyricsSettings.enabled === visible) return;
