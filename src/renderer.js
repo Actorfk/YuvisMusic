@@ -421,7 +421,8 @@ function markListeningSessionValid() {
   const track = day.tracks[session.trackKey] || { title: session.title, seconds: 0, plays: 0, valid: true };
   track.title = session.title;
   track.valid = true;
-  track.seconds = Math.max(Number(track.seconds) || 0, session.seconds);
+  // The qualifying session's first 60 seconds have not been credited to the track yet.
+  track.seconds = (Number(track.seconds) || 0) + session.seconds;
   track.plays += 1;
   day.plays += 1;
   day.tracks[session.trackKey] = track;
