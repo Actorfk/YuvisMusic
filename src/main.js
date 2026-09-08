@@ -1172,7 +1172,7 @@ app.whenReady().then(() => {
     isForeground: () => !mainWindow || mainWindow.isDestroyed() || mainWindow.isFocused(),
     onAction: (action) => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (action === 'closeGameLyrics') return setGameLyricsVisible(false);
+      if (action === 'closeGameLyrics') return setGameLyricsVisible(!gameLyricsVisible);
       if (action === 'search') {
         if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.show();

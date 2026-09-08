@@ -10,7 +10,8 @@
     togglePlayback: { label: '播放 / 暂停', defaultShortcut: { code: 'Space', ctrl: false, alt: false, shift: false, meta: false } },
     next: { label: '下一曲', defaultShortcut: { code: 'ArrowRight', ctrl: true, alt: false, shift: false, meta: false } },
     search: { label: '聚焦搜索', defaultShortcut: { code: 'KeyK', ctrl: true, alt: false, shift: false, meta: false } },
-    closeGameLyrics: { label: '关闭游戏歌词', defaultShortcut: { code: 'KeyL', ctrl: true, alt: true, shift: true, meta: false } }
+    // Retain the saved action ID so existing custom bindings continue to work.
+    closeGameLyrics: { label: '开启 / 关闭游戏歌词', defaultShortcut: { code: 'KeyL', ctrl: true, alt: true, shift: true, meta: false } }
   };
 
   function shortcutSignature(shortcut) {

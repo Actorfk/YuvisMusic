@@ -3031,7 +3031,7 @@ function executeKeyboardShortcut(action) {
   else if (action === 'togglePlayback') togglePlay();
   else if (action === 'next') nextTrack(1);
   else if (action === 'closeGameLyrics') {
-    state.gameLyricsSettings.enabled = false;
+    state.gameLyricsSettings.enabled = !state.gameLyricsSettings.enabled;
     applyGameLyricsSettings();
   } else if (action === 'search') {
     closeModals();
