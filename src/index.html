@@ -395,12 +395,13 @@
             <div class="shortcut-setting-row"><span><strong>播放 / 暂停</strong><small>切换当前音乐的播放状态</small></span><button type="button" data-shortcut-action="togglePlayback" aria-label="设置播放暂停快捷键"></button></div>
             <div class="shortcut-setting-row"><span><strong>下一曲</strong><small>切换到播放列表中的下一首音乐</small></span><button type="button" data-shortcut-action="next" aria-label="设置下一曲快捷键"></button></div>
             <div class="shortcut-setting-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><button type="button" data-shortcut-action="search" aria-label="设置聚焦搜索快捷键"></button></div>
+            <div class="shortcut-setting-row"><span><strong>关闭游戏歌词</strong><small>立即隐藏游戏歌词，锁定时也可使用</small></span><button type="button" data-shortcut-action="closeGameLyrics" aria-label="设置关闭游戏歌词快捷键"></button></div>
           </div>
           <div class="shortcut-settings-actions">
             <span>录入时按 Esc 可取消；重复的组合键不会保存。</span>
             <button id="resetShortcutsBtn" type="button">恢复默认</button>
           </div>
-          <div class="settings-save-note"><i></i><span>自定义组合键会立即生效并保存在本机；键盘媒体控制键始终可用。</span></div>
+          <div class="settings-save-note"><i></i><span>后台组合键在其他软件或游戏中也可使用。单独的空格、字母等按键在后台会加上 Ctrl + Alt，避免影响输入；修改后立即生效并保存。</span></div>
         </div>
 
         <div class="settings-panel" id="desktopLyricsPanel" data-settings-panel="desktopLyrics" hidden>
@@ -582,6 +583,7 @@
         <div class="shortcut-row"><span><strong>播放 / 暂停</strong><small>切换当前音乐的播放状态，也支持键盘媒体键</small></span><div class="shortcut-keys" data-shortcut-display="togglePlayback"></div></div>
         <div class="shortcut-row"><span><strong>下一曲</strong><small>切换到播放列表中的下一首音乐</small></span><div class="shortcut-keys" data-shortcut-display="next"></div></div>
         <div class="shortcut-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><div class="shortcut-keys" data-shortcut-display="search"></div></div>
+        <div class="shortcut-row"><span><strong>关闭游戏歌词</strong><small>隐藏游戏歌词，播放器在后台或歌词锁定时也可使用</small></span><div class="shortcut-keys" data-shortcut-display="closeGameLyrics"></div></div>
         <div class="reserved-inline"><i></i><span>可在设置中自定义这些组合键</span><button id="openShortcutSettingsBtn" type="button">前往设置</button></div>
       </div>
     </article>
@@ -591,6 +593,7 @@
   <audio id="audio"></audio>
   <script src="track-identity.js"></script>
   <script src="virtual-list.js"></script>
+  <script src="keyboard-shortcuts.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

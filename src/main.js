@@ -1,10 +1,11 @@
-const { app, BrowserWindow, dialog, ipcMain, nativeImage, safeStorage, screen, shell } = require('electron');
+const { app, BrowserWindow, dialog, globalShortcut, ipcMain, nativeImage, safeStorage, screen, shell } = require('electron');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
 const { stableTrackId } = require('./track-identity');
 const { fetchAssistantModels } = require('./assistant-models');
+const { createGlobalShortcutManager } = require('./global-shortcuts');
 const {
   DEFAULT_CACHE_MAX_AGE_MS,
   DEFAULT_CACHE_MAX_ENTRIES,
@@ -27,6 +28,7 @@ const COVER_CACHE_MAX_BYTES = 512 * 1024 * 1024;
 const CACHE_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 let mainWindow;
+let shortcutManager;
 let desktopLyricsWindow;
 let desktopLyricsVisible = false;
 let desktopLyricsPayload = null;
@@ -400,9 +402,12 @@ function createWindow() {
   mainWindow.webContents.once('did-finish-load', showMainWindow);
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false));
+  mainWindow.on('focus', () => shortcutManager?.refresh());
+  mainWindow.on('blur', () => shortcutManager?.refresh());
   mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('window:fullscreen', true));
   mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('window:fullscreen', false));
   mainWindow.on('closed', () => {
+    shortcutManager?.release();
     mainWindow = null;
     if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) desktopLyricsWindow.destroy();
     if (gameLyricsWindow && !gameLyricsWindow.isDestroyed()) gameLyricsWindow.destroy();
@@ -959,6 +964,11 @@ ipcMain.handle('lyrics:read-file', async (_event, lyricsPath) => {
   }
 });
 
+ipcMain.handle('shortcuts:set', (event, shortcuts) => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return {};
+  return shortcutManager.update(shortcuts);
+});
+
 ipcMain.handle('assistant:get-config', async () => publicAssistantConfig(await readAssistantConfig()));
 
 ipcMain.handle('assistant:get-models', async (_event, draft) => {
@@ -1157,6 +1167,23 @@ ipcMain.on('game-lyrics:drag-end', (event) => {
 });
 
 app.whenReady().then(() => {
+  shortcutManager = createGlobalShortcutManager({
+    globalShortcut,
+    isForeground: () => !mainWindow || mainWindow.isDestroyed() || mainWindow.isFocused(),
+    onAction: (action) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (action === 'closeGameLyrics') return setGameLyricsVisible(false);
+      if (action === 'search') {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+      }
+      mainWindow.webContents.send('shortcuts:trigger', action);
+    },
+    onStatus: (status) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('shortcuts:status', status);
+    }
+  });
   migrateLegacyUserData()
     .catch((error) => console.warn('Unable to migrate legacy user data:', error.message))
     .finally(createWindow);
@@ -1171,3 +1198,5 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+app.on('will-quit', () => shortcutManager?.release());

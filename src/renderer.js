@@ -19,12 +19,7 @@ const FONT_SIZE_OPTIONS = {
   extraLarge: 1.2
 };
 
-const SHORTCUT_ACTIONS = {
-  previous: { label: '上一曲', defaultShortcut: { code: 'ArrowLeft', ctrl: true, alt: false, shift: false, meta: false } },
-  togglePlayback: { label: '播放 / 暂停', defaultShortcut: { code: 'Space', ctrl: false, alt: false, shift: false, meta: false } },
-  next: { label: '下一曲', defaultShortcut: { code: 'ArrowRight', ctrl: true, alt: false, shift: false, meta: false } },
-  search: { label: '聚焦搜索', defaultShortcut: { code: 'KeyK', ctrl: true, alt: false, shift: false, meta: false } }
-};
+const { SHORTCUT_ACTIONS, shortcutSignature, defaultKeyboardShortcuts, normalizeKeyboardShortcuts, backgroundShortcut, shortcutAccelerator } = window.YuvisKeyboardShortcuts;
 const SHORTCUT_MODIFIER_CODES = new Set(['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight']);
 
 const ASSISTANT_SYSTEM_PROMPT = `你是 Yuvis 音乐播放器里的中文助手。你可以通过工具读取本地音乐状态并控制播放器。
@@ -116,35 +111,6 @@ function readArrayStorage(key) {
 function readObjectStorage(key, fallback = {}) {
   const value = readStorage(key, fallback);
   return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
-}
-
-function shortcutSignature(shortcut) {
-  return [shortcut.ctrl ? '1' : '0', shortcut.alt ? '1' : '0', shortcut.shift ? '1' : '0', shortcut.meta ? '1' : '0', shortcut.code].join(':');
-}
-
-function normalizeShortcut(value, fallback) {
-  if (typeof value?.code !== 'string' || !/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(value.code)) return { ...fallback };
-  return {
-    code: value.code,
-    ctrl: Boolean(value.ctrl),
-    alt: Boolean(value.alt),
-    shift: Boolean(value.shift),
-    meta: Boolean(value.meta)
-  };
-}
-
-function defaultKeyboardShortcuts() {
-  return Object.fromEntries(Object.entries(SHORTCUT_ACTIONS).map(([action, config]) => [action, { ...config.defaultShortcut }]));
-}
-
-function normalizeKeyboardShortcuts(value) {
-  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  const shortcuts = Object.fromEntries(Object.entries(SHORTCUT_ACTIONS).map(([action, config]) => [
-    action,
-    normalizeShortcut(source[action], config.defaultShortcut)
-  ]));
-  const signatures = Object.values(shortcuts).map(shortcutSignature);
-  return new Set(signatures).size === signatures.length ? shortcuts : defaultKeyboardShortcuts();
 }
 
 function normalizePlaylists(value) {
@@ -253,6 +219,7 @@ const state = {
     fontSize: Object.hasOwn(FONT_SIZE_OPTIONS, savedAppearanceSettings.fontSize) ? savedAppearanceSettings.fontSize : 'standard'
   },
   keyboardShortcuts: normalizeKeyboardShortcuts(savedAppSettings.keyboardShortcuts),
+  keyboardShortcutStatus: {},
   equalizerSettings: {
     enabled: Boolean(savedEqualizerSettings.enabled),
     gains: normalizeEqualizerGains(savedEqualizerSettings.gains),
@@ -917,7 +884,30 @@ function renderKeyboardShortcuts() {
     }
     const display = $(`[data-shortcut-display="${action}"]`);
     if (display) display.innerHTML = shortcutHtml(shortcut);
+    const status = state.keyboardShortcutStatus[action];
+    for (const element of [recorder, display]) {
+      const label = element?.parentElement.querySelector('span');
+      if (!label) continue;
+      let hint = label.querySelector('.shortcut-background-status');
+      if (!hint) {
+        hint = document.createElement('small');
+        hint.className = 'shortcut-background-status';
+        label.append(hint);
+      }
+      hint.textContent = status?.error || `后台：${shortcutText(backgroundShortcut(shortcut))}`;
+      hint.classList.toggle('shortcut-unavailable', Boolean(status?.error));
+      hint.setAttribute('role', status?.error ? 'status' : 'presentation');
+    }
   });
+}
+
+async function syncKeyboardShortcuts() {
+  try {
+    state.keyboardShortcutStatus = await window.desktop.setKeyboardShortcuts(state.keyboardShortcuts);
+  } catch {
+    state.keyboardShortcutStatus = Object.fromEntries(Object.keys(SHORTCUT_ACTIONS).map((action) => [action, { error: '后台快捷键暂不可用，请重启播放器' }]));
+  }
+  renderKeyboardShortcuts();
 }
 
 function resetKeyboardShortcuts() {
@@ -925,6 +915,7 @@ function resetKeyboardShortcuts() {
   state.keyboardShortcuts = defaultKeyboardShortcuts();
   persistAppSettings();
   renderKeyboardShortcuts();
+  syncKeyboardShortcuts();
   showToast('快捷键已恢复默认');
 }
 
@@ -2621,7 +2612,8 @@ $('.shortcut-setting-list').addEventListener('keydown', (event) => {
     meta: event.metaKey
   };
   const duplicate = Object.entries(state.keyboardShortcuts).find(([action, current]) => (
-    action !== recordingShortcutAction && shortcutSignature(current) === shortcutSignature(shortcut)
+    action !== recordingShortcutAction && (shortcutSignature(current) === shortcutSignature(shortcut)
+      || (shortcutAccelerator(backgroundShortcut(shortcut)) && shortcutAccelerator(backgroundShortcut(current)) === shortcutAccelerator(backgroundShortcut(shortcut))))
   ));
   if (duplicate) {
     showToast(`该组合键已用于“${SHORTCUT_ACTIONS[duplicate[0]].label}”`);
@@ -2631,6 +2623,7 @@ $('.shortcut-setting-list').addEventListener('keydown', (event) => {
   recordingShortcutAction = null;
   persistAppSettings();
   renderKeyboardShortcuts();
+  syncKeyboardShortcuts();
   showToast('快捷键已更新');
 });
 $('.shortcut-setting-list').addEventListener('focusout', (event) => {
@@ -3037,8 +3030,25 @@ function executeKeyboardShortcut(action) {
   if (action === 'previous') nextTrack(-1);
   else if (action === 'togglePlayback') togglePlay();
   else if (action === 'next') nextTrack(1);
-  else if (action === 'search') $('#searchInput').focus();
+  else if (action === 'closeGameLyrics') {
+    state.gameLyricsSettings.enabled = false;
+    applyGameLyricsSettings();
+  } else if (action === 'search') {
+    closeModals();
+    closeNowPlayingPage();
+    state.view = 'library';
+    renderView();
+    $('#searchInput').focus();
+  }
 }
+
+window.desktop.onKeyboardShortcut((action) => {
+  if (Object.hasOwn(SHORTCUT_ACTIONS, action)) executeKeyboardShortcut(action);
+});
+window.desktop.onKeyboardShortcutStatus((status) => {
+  state.keyboardShortcutStatus = status;
+  renderKeyboardShortcuts();
+});
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
@@ -3067,7 +3077,9 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (isTextEntry) return;
-  const action = Object.keys(SHORTCUT_ACTIONS).find((shortcutAction) => eventMatchesShortcut(event, state.keyboardShortcuts[shortcutAction]));
+  const action = Object.keys(SHORTCUT_ACTIONS).find((shortcutAction) => (
+    eventMatchesShortcut(event, state.keyboardShortcuts[shortcutAction]) || eventMatchesShortcut(event, backgroundShortcut(state.keyboardShortcuts[shortcutAction]))
+  ));
   if (!action) return;
   event.preventDefault();
   executeKeyboardShortcut(action);
@@ -3202,6 +3214,7 @@ window.desktop.onGameLyricsSettings((settings) => {
 });
 
 async function init() {
+  syncKeyboardShortcuts();
   applyAppearanceSettings({ persist: false });
   applyFullscreenLyricsSettings({ persist: false });
   applyNowPlayingStyle({ persist: false });

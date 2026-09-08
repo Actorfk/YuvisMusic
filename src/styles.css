@@ -900,6 +900,7 @@ body.is-playing .play-button .pause-icon { display: block; }
 .shortcut-row span strong, .shortcut-row span small { display: block; }
 .shortcut-row span strong { font-size: 12px; }
 .shortcut-row span small { margin-top: 4px; color: #999; font-size: 9px; font-weight: 400; }
+.shortcut-setting-row small.shortcut-unavailable, .shortcut-row small.shortcut-unavailable { color: var(--red); }
 .shortcut-keys { flex: none; display: flex; align-items: center; }
 .shortcut-row kbd { min-width: 31px; height: 26px; padding: 0 8px; display: grid; place-items: center; border: 1px solid #d8d5d2; border-bottom-width: 2px; border-radius: 7px; color: #666; background: #faf9f7; font-family: inherit; font-size: 10px; }
 .shortcut-row b { margin: 0 6px; color: #aaa; font-weight: 400; }
