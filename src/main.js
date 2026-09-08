@@ -504,7 +504,10 @@ function positionGameLyricsWindow() {
 
 function applyGameLyricsWindowLock() {
   if (!gameLyricsWindow || gameLyricsWindow.isDestroyed()) return;
+  if (gameLyricsSettings.locked) gameLyricsDragState = null;
   gameLyricsWindow.setResizable(false);
+  // Locked lyrics must not handle mouse movement or replace a game's cursor.
+  gameLyricsWindow.setIgnoreMouseEvents(gameLyricsSettings.locked, { forward: false });
   if (typeof gameLyricsWindow.setMovable === 'function') gameLyricsWindow.setMovable(!gameLyricsSettings.locked);
 }
 
@@ -517,7 +520,6 @@ function notifyGameLyricsSettings() {
 
 function setGameLyricsLocked(locked) {
   gameLyricsSettings.locked = Boolean(locked);
-  if (gameLyricsSettings.locked) gameLyricsDragState = null;
   applyGameLyricsWindowLock();
   notifyGameLyricsSettings();
 }
@@ -570,7 +572,6 @@ function createGameLyricsWindow() {
     }
   });
   gameLyricsWindow.setAlwaysOnTop(true, 'screen-saver');
-  gameLyricsWindow.setIgnoreMouseEvents(false);
   gameLyricsWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   gameLyricsDisplayId = screen.getPrimaryDisplay().id;
   applyGameLyricsWindowLock();

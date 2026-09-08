@@ -15,11 +15,15 @@ let pendingDragPoint = null;
 let dragFrame = null;
 
 function applySettings() {
+  if (settings.locked) {
+    closeContextMenu();
+    endDrag();
+  }
   document.body.dataset.fontSize = settings.fontSize;
   document.body.dataset.locked = String(settings.locked);
   document.body.dataset.side = settings.side;
   document.querySelector('.drag-hint').textContent = settings.locked
-    ? '游戏歌词已锁定 · 右击解锁'
+    ? '游戏歌词已锁定 · 在设置中解锁'
     : '拖动后自动吸附左右边缘 · 右击锁定';
   contextLockBtn.querySelector('span').textContent = settings.locked ? '解锁游戏歌词' : '锁定游戏歌词';
   contextLockBtn.querySelector('kbd').textContent = settings.locked ? '解' : '锁';
@@ -127,6 +131,7 @@ lyricsShell.addEventListener('pointercancel', endDrag);
 
 document.addEventListener('contextmenu', (event) => {
   event.preventDefault();
+  if (settings.locked) return;
   endDrag();
   openContextMenu(event);
 });
