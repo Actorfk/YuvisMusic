@@ -15,7 +15,8 @@
   --shadow: 0 18px 60px rgba(25, 20, 20, .08);
   --workspace-edge: 12px;
   --workspace-gap: 12px;
-  --sidebar-width: 232px;
+  /* Keep navigation stable while resizing across the compact layout breakpoints. */
+  --sidebar-width: clamp(210px, calc(10vw + 88px), 232px);
   --panel-radius: 22px;
   --titlebar-height: 42px;
 }
@@ -84,9 +85,9 @@ svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-l
 .playlist-artwork.artwork-theme-1 { background: linear-gradient(145deg, #f5eee6, #dfcbb9); color: #9d5637; }
 .playlist-artwork.artwork-theme-2 { background: linear-gradient(145deg, #eef1ef, #d0d9d2); color: #52705d; }
 .playlist-artwork.artwork-theme-3 { background: linear-gradient(145deg, #f0eef5, #d8d1e3); color: #6b5a84; }
-.nav-item { width: 100%; height: 44px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 13px; color: #68676a; margin: 3px 0; text-align: left; transition: .2s; position: relative; }
-.nav-item svg { width: 19px; }
-.nav-item span { flex: 1; }
+.nav-item { width: 100%; height: 44px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 13px; color: #68676a; margin: 3px 0; text-align: left; transition: color .2s, background-color .2s, box-shadow .2s, transform .2s; position: relative; }
+.nav-item svg { width: 19px; flex-shrink: 0; }
+.nav-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item em { font-style: normal; font-size: 12px; color: #999; }
 .nav-item:hover { color: var(--ink); background: rgba(255,255,255,.58); }
 .nav-item.active { color: var(--red); background: #fff; font-weight: 600; box-shadow: 0 4px 20px rgba(30,25,25,.045); }
@@ -109,7 +110,7 @@ h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .library-import-button:hover { border-color: rgba(var(--accent-rgb),.4); background: #fff; }
 .library-import-button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .library-import-button svg { width: 18px; height: 18px; flex: none; }
-.search-box { height: 40px; width: clamp(220px, 25vw, 320px); border: 1px solid var(--line); background: rgba(255,255,255,.72); border-radius: 12px; display: flex; align-items: center; padding: 0 10px 0 13px; gap: 9px; color: #aaa; transition: .2s; }
+.search-box { height: 40px; width: clamp(220px, 25vw, 320px); border: 1px solid var(--line); background: rgba(255,255,255,.72); border-radius: 12px; display: flex; align-items: center; padding: 0 10px 0 13px; gap: 9px; color: #aaa; transition: border-color .2s, background-color .2s, box-shadow .2s; }
 .search-box:focus-within { border-color: rgba(var(--accent-rgb),.35); background: #fff; box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.06); }
 .search-box svg { width: 18px; }
 .search-box input { border: 0; outline: 0; background: transparent; min-width: 0; flex: 1; color: var(--ink); font-size: 14px; user-select: text; }
@@ -914,19 +915,9 @@ body[data-now-playing-style="vinyl"] #detailCover { position: absolute; inset: 2
 @keyframes fullscreenAura { from { opacity: .72; transform: scale(.94) rotate(-3deg); } to { opacity: 1; transform: scale(1.06) rotate(3deg); } }
 
 @media (max-width: 1220px) {
-  :root { --sidebar-width: 210px; }
   .player-bar { grid-template-columns: minmax(220px, 1fr) minmax(390px, 1.4fr) minmax(190px,.8fr); }
 }
 @media (max-width: 1060px) {
-  :root { --sidebar-width: 78px; --workspace-edge: 12px; --workspace-gap: 12px; --panel-radius: 18px; }
-  .workspace { grid-template-columns: var(--sidebar-width) 1fr; }
-  .sidebar { padding-left: 10px; padding-right: 10px; }
-  .brand { padding: 0 11px; }
-  .brand > div:last-child, .nav-label, .nav-item span, .nav-item em { display: none; }
-  .playlist-label-row { justify-content: center; margin-top: 20px; }
-  .create-playlist-button { margin: 0; }
-  .nav-item { justify-content: center; padding: 0; }
-  .nav-item.active::before { left: -10px; }
   .player-bar { padding: 0 20px; grid-template-columns: 220px minmax(0, 1fr) 160px; }
   #qualityBadge { display: none; }
   .now-playing-sheet { grid-template-columns: 1fr 1.05fr; padding: 35px; gap: 28px; }
