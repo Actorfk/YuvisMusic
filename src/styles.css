@@ -19,6 +19,11 @@
   --sidebar-width: clamp(210px, calc(10vw + 88px), 232px);
   --panel-radius: 22px;
   --titlebar-height: 42px;
+  --height-room: clamp(0px, calc(100vh - 780px), 120px);
+  --sheet-padding: clamp(38px, 5vw, 70px);
+  --art-stage-height: 390px;
+  --cover-size: min(25vw, 310px);
+  --vinyl-size: min(22vw, 276px);
 }
 
 /* Hide scrollbar chrome without changing overflow or scroll interaction. */
@@ -920,6 +925,7 @@ body[data-now-playing-style="vinyl"] #detailCover { position: absolute; inset: 2
   .player-bar { grid-template-columns: minmax(220px, 1fr) minmax(390px, 1.4fr) minmax(190px,.8fr); }
 }
 @media (max-width: 1060px) {
+  :root { --sheet-padding: 35px; --art-stage-height: 320px; --cover-size: 240px; --vinyl-size: 215px; }
   .player-bar { padding: 0 20px; grid-template-columns: 220px minmax(0, 1fr) 160px; }
   #qualityBadge { display: none; }
   .now-playing-sheet { grid-template-columns: 1fr 1.05fr; padding: 35px; gap: 28px; }
@@ -934,35 +940,29 @@ body[data-now-playing-style="vinyl"] #detailCover { position: absolute; inset: 2
   .stats-facts div:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
   .stats-panel-grid { grid-template-columns: 1fr; }
 }
-@media (max-height: 780px) {
-  .sidebar { padding-top: 20px; padding-bottom: 16px; }
-  .nav-list { margin-top: 22px; }
-  .nav-label.second { margin-top: 19px; }
-  .playlist-label-row { margin-top: 17px; }
-  .now-playing-sheet { padding-top: 24px; padding-bottom: 24px; }
-  .detail-art-stage { min-height: 270px; }
-  .detail-cover { width: min(23vw, 235px); border-radius: 19px; }
-  .detail-vinyl { width: min(21vw, 210px); }
-  .detail-content h2 { margin-top: 10px; margin-bottom: 6px; font-size: clamp(28px, 2.8vw, 38px); }
-  .lyrics-toolbar { margin-top: 14px; }
-  .lyrics-offset-control { min-height: 31px; margin-top: 4px; }
-  .detail-lyrics { height: clamp(220px, 34vh, 270px); margin-top: 4px; margin-bottom: 0; padding: clamp(82px, 13vh, 104px) 16px; }
-  .detail-lyrics p { padding: 5px 0; font-size: 15px; }
-  .detail-lyrics p.active { font-size: 20px; }
-  .stats-section { margin-top: 22px; }
-  .stats-summary-card { min-height: 106px; padding: 16px; }
-  .stats-summary-card strong { margin-top: 12px; }
-  .stats-panel { min-height: 250px; }
-}
+/* Grow from compact to roomy spacing continuously; height breakpoints cause
+   visible jumps in every panel when a window edge crosses the threshold. */
+.sidebar { padding-top: calc(20px + var(--height-room) / 15); padding-bottom: calc(16px + var(--height-room) / 20); }
+.nav-list { margin-top: calc(22px + var(--height-room) * 7 / 60); }
+.nav-label.second { margin-top: calc(19px + var(--height-room) / 15); }
+.playlist-label-row { margin-top: calc(17px + var(--height-room) / 20); }
+.now-playing-sheet { padding-block: min(var(--sheet-padding), calc(24px + var(--height-room) * 23 / 60)); }
+.detail-art-stage { min-height: min(var(--art-stage-height), calc(270px + var(--height-room))); }
+.detail-cover { width: min(var(--cover-size), calc(235px + var(--height-room) * 5 / 8)); border-radius: calc(19px + var(--height-room) / 40); }
+.detail-vinyl { width: min(var(--vinyl-size), calc(210px + var(--height-room) * 11 / 20)); }
+.detail-content h2 { margin-top: calc(10px - var(--height-room) / 12); margin-bottom: calc(6px + var(--height-room) / 40); font-size: min(clamp(31px, 3vw, 45px), calc(clamp(28px, 2.8vw, 38px) + clamp(0px, calc(100vh - 780px), 120px) / 10)); }
+.lyrics-toolbar { margin-top: calc(14px + var(--height-room) * 13 / 120); }
+.lyrics-offset-control { min-height: calc(31px + var(--height-room) / 30); margin-top: calc(4px + var(--height-room) / 40); }
+.detail-lyrics { height: min(clamp(330px, 40vh, 420px), calc(clamp(220px, 34vh, 270px) + max(0px, calc(100vh - 780px)) * 3 / 4)); margin-top: calc(4px + var(--height-room) / 20); margin-bottom: 0; padding: min(clamp(118px, 15vh, 154px), calc(clamp(82px, 13vh, 104px) + var(--height-room) * 5 / 12)) calc(16px + var(--height-room) / 30); }
+.detail-lyrics p { padding: calc(5px + var(--height-room) / 40) 0; font-size: clamp(15px, calc(100vh / 60 + 2px), 17px); }
+.detail-lyrics p.active { font-size: clamp(20px, calc(100vh / 60 + 7px), 22px); }
+.stats-section { margin-top: calc(22px + var(--height-room) * 3 / 40); }
+.stats-summary-card { min-height: calc(106px + var(--height-room) / 6); padding: calc(16px + var(--height-room) / 30); }
+.stats-summary-card strong { margin-top: calc(12px + var(--height-room) / 24); }
+.stats-panel { min-height: calc(250px + var(--height-room) * 4 / 15); }
 
 /* Center the cover plus the exposed half-disc as one piece of artwork. */
-body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(25vw, 310px); --classic-vinyl-size: min(22vw, 276px); }
-@media (max-width: 1060px) {
-  body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: 240px; --classic-vinyl-size: 215px; }
-}
-@media (max-height: 780px) {
-  body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(23vw, 235px); --classic-vinyl-size: min(21vw, 210px); }
-}
+body[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(var(--cover-size), calc(235px + var(--height-room) * 5 / 8)); --classic-vinyl-size: min(var(--vinyl-size), calc(210px + var(--height-room) * 11 / 20)); }
 body.fullscreen-lyrics[data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(28vw, 430px); --classic-vinyl-size: min(25vw, 390px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"][data-now-playing-style="classic"] .detail-art-stage { --classic-cover-size: min(25vw, 310px); --classic-vinyl-size: min(22vw, 276px); }
 body[data-now-playing-style="classic"] #detailCover { position: absolute; width: var(--classic-cover-size); left: calc(50% - var(--classic-cover-size) / 2 - var(--classic-vinyl-size) / 4); top: 50%; transform: none; translate: 0 -50%; }
