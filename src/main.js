@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs/promises');
 const { pathToFileURL } = require('url');
 const { stableTrackId } = require('./track-identity');
+const { fetchAssistantModels } = require('./assistant-models');
 const {
   DEFAULT_CACHE_MAX_AGE_MS,
   DEFAULT_CACHE_MAX_ENTRIES,
@@ -958,6 +959,13 @@ ipcMain.handle('lyrics:read-file', async (_event, lyricsPath) => {
 });
 
 ipcMain.handle('assistant:get-config', async () => publicAssistantConfig(await readAssistantConfig()));
+
+ipcMain.handle('assistant:get-models', async (_event, draft) => {
+  const current = await readAssistantConfig();
+  const baseUrl = typeof draft?.baseUrl === 'string' ? draft.baseUrl.trim() : '';
+  const apiKey = typeof draft?.apiKey === 'string' ? draft.apiKey.trim() : '';
+  return fetchAssistantModels({ baseUrl, apiKey: apiKey || assistantApiKey(current) });
+});
 
 ipcMain.handle('assistant:save-config', async (_event, nextConfig) => {
   const current = await readAssistantConfig();

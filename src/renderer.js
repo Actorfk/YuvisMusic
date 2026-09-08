@@ -260,6 +260,7 @@ const state = {
   },
   equalizerPresets: normalizeEqualizerPresets(savedEqualizerPresets),
   assistantConfig: { model: '', baseUrl: 'https://api.openai.com/v1', hasApiKey: false, apiKeyProtected: false, loaded: false },
+  assistantModelsRequest: 0,
   assistantMessages: [],
   assistantBusy: false,
   playerOpen: false,
@@ -1983,6 +1984,7 @@ function recentAssistantMessages(limit = 36) {
 }
 
 function renderAssistantConfig() {
+  resetAssistantModels();
   const config = state.assistantConfig;
   $('#assistantModelInput').value = config.model || '';
   $('#assistantBaseUrlInput').value = config.baseUrl || 'https://api.openai.com/v1';
@@ -1992,6 +1994,52 @@ function renderAssistantConfig() {
     ? (config.apiKeyProtected ? 'API Key 已使用系统加密保存' : 'API Key 已保存在本机')
     : '尚未保存 API Key（本地模型可不填）';
   $('#clearAssistantKeyBtn').hidden = !config.hasApiKey;
+}
+
+function resetAssistantModels() {
+  state.assistantModelsRequest += 1;
+  $('#assistantModelSelect').replaceChildren();
+  $('#assistantModelSelect').hidden = true;
+  $('#assistantModelsStatus').textContent = '可直接填写模型名，也可获取当前服务提供的模型列表。';
+  $('#assistantModelsStatus').classList.remove('error');
+  $('#fetchAssistantModelsBtn').disabled = false;
+  $('#fetchAssistantModelsBtn').textContent = '获取模型';
+}
+
+async function fetchAssistantModelOptions() {
+  const button = $('#fetchAssistantModelsBtn');
+  if (button.disabled) return;
+  resetAssistantModels();
+  const request = state.assistantModelsRequest;
+  const status = $('#assistantModelsStatus');
+  button.disabled = true;
+  button.textContent = '获取中…';
+  status.textContent = '正在获取模型列表…';
+  try {
+    const models = await window.desktop.getAssistantModels({
+      baseUrl: $('#assistantBaseUrlInput').value,
+      apiKey: $('#assistantApiKeyInput').value
+    });
+    if (request !== state.assistantModelsRequest) return;
+    const select = $('#assistantModelSelect');
+    select.add(new Option('请选择模型，或在上方手动填写', ''));
+    for (const model of models) select.add(new Option(model, model));
+    const current = $('#assistantModelInput').value.trim();
+    if (models.includes(current)) select.value = current;
+    select.hidden = models.length === 0;
+    status.textContent = models.length
+      ? `已获取 ${models.length} 个模型，可从列表选择，也可手动填写。`
+      : '服务返回了空列表，仍可手动填写模型名。';
+  } catch (error) {
+    if (request !== state.assistantModelsRequest) return;
+    status.textContent = String(error.message || '获取模型失败，可手动填写模型名').replace(/^Error invoking remote method '[^']+': Error: /, '');
+    status.classList.add('error');
+  } finally {
+    if (request === state.assistantModelsRequest) {
+      button.disabled = false;
+      button.textContent = '获取模型';
+    }
+  }
 }
 
 function assistantParameterType(schema = {}) {
@@ -2691,6 +2739,15 @@ $('#equalizerPresetNameInput').addEventListener('keydown', (event) => {
   }
 });
 $('#saveAssistantConfigBtn').addEventListener('click', () => saveAssistantConfiguration(false));
+$('#fetchAssistantModelsBtn').addEventListener('click', fetchAssistantModelOptions);
+$('#assistantBaseUrlInput').addEventListener('input', resetAssistantModels);
+$('#assistantApiKeyInput').addEventListener('input', resetAssistantModels);
+$('#assistantModelSelect').addEventListener('change', (event) => {
+  if (event.target.value) $('#assistantModelInput').value = event.target.value;
+});
+$('#assistantModelInput').addEventListener('input', (event) => {
+  $('#assistantModelSelect').value = event.target.value.trim();
+});
 $('#clearAssistantKeyBtn').addEventListener('click', () => saveAssistantConfiguration(true));
 $('#openAssistantConfigBtn').addEventListener('click', () => openSettings('yuvis'));
 $('#newAssistantChatBtn').addEventListener('click', startNewAssistantChat);

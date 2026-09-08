@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('desktop', {
   chooseLyricsFile: () => ipcRenderer.invoke('lyrics:choose-file'),
   readLyricsFile: (lyricsPath) => ipcRenderer.invoke('lyrics:read-file', lyricsPath),
   getAssistantConfig: () => ipcRenderer.invoke('assistant:get-config'),
+  getAssistantModels: (config) => ipcRenderer.invoke('assistant:get-models', config),
   saveAssistantConfig: (config) => ipcRenderer.invoke('assistant:save-config', config),
   completeAssistant: (payload) => ipcRenderer.invoke('assistant:complete', payload),
   showInFolder: (filePath) => ipcRenderer.invoke('track:show-in-folder', filePath),
