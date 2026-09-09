@@ -334,7 +334,18 @@ body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-empty stron
 #trackList[data-reorderable="true"] .track-row, #queueList .queue-item, #playlistNav .nav-item { cursor: grab; user-select: none; }
 body.list-reordering, body.list-reordering * { cursor: grabbing !important; user-select: none !important; }
 .reorder-insertion-marker { position: fixed; height: 3px; z-index: 1000; pointer-events: none; border-radius: 3px; background: var(--red); box-shadow: 0 0 0 1px var(--canvas); }
-.reorder-drag-label { position: fixed; z-index: 1001; pointer-events: none; max-width: 230px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--red); box-shadow: 0 8px 24px rgba(25,20,20,.18); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reorder-insertion-marker { transition: top .16s cubic-bezier(.2,.8,.2,1), width .16s ease; }
+.reorder-shifting { transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .18s ease !important; will-change: transform; }
+.reorder-source { opacity: .22; }
+.reorder-source > * { visibility: hidden; }
+.reorder-drag-preview.reorder-drag-preview { position: fixed; left: 0; top: 0; z-index: 1001; pointer-events: none; margin: 0; background: var(--surface); border-radius: 12px; box-shadow: 0 14px 36px rgba(25,20,20,.18), 0 0 0 1px rgba(var(--accent-rgb),.16); scale: 1.012; transition: none; animation: reorder-lift .16s ease-out; will-change: transform; }
+.reorder-drag-preview.reorder-settling { animation: none; }
+.reorder-drag-preview.nav-item .playlist-artwork { flex: 0 0 27px; }
+@keyframes reorder-lift { from { opacity: .65; scale: .99; } to { opacity: 1; scale: 1.012; } }
+@media (prefers-reduced-motion: reduce) {
+  .reorder-shifting, .reorder-insertion-marker { transition: none !important; }
+  .reorder-drag-preview.reorder-drag-preview { animation: none; scale: 1; }
+}
 .track-row { min-height: 62px; display: grid; grid-template-columns: 35px minmax(190px, 1.5fr) minmax(100px, .8fr) 90px 48px 68px; align-items: center; column-gap: 12px; border-bottom: 1px solid rgba(231,229,226,.72); padding: 4px 7px; border-radius: 10px; transition: .17s; }
 .track-row:not(.table-head):hover { background: #fff; box-shadow: 0 5px 18px rgba(25,20,20,.04); }
 .track-row.current { background: var(--red-soft); }

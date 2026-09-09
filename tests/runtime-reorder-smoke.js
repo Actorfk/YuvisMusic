@@ -49,16 +49,34 @@ async function main() {
     await mouse('mousePressed', a.x, a.y);
     await mouse('mouseMoved', a.x + 8, a.y);
     await mouse('mouseMoved', b.x, b.y);
-    await delay(70);
+    await delay(35);
+    const previewY = await evaluate("document.querySelector('.reorder-drag-preview').getBoundingClientRect().top");
+    await delay(65);
+    const animationState = await evaluate(`(() => {
+      const preview = document.querySelector('.reorder-drag-preview');
+      const rows = [...document.querySelectorAll('.reorder-shifting:not(.reorder-source)')];
+      return { y: preview.getBoundingClientRect().top, shifted: rows.some(row => Math.abs(new DOMMatrixReadOnly(getComputedStyle(row).transform).m42) > 1), sources: document.querySelectorAll('.reorder-source').length };
+    })()`);
+    assert.ok(Math.abs(animationState.y - previewY) > .1, 'Lifted row smoothly follows the pointer');
+    assert.equal(animationState.shifted, true, 'Neighboring rows visibly make room');
+    assert.equal(animationState.sources, 1);
+    if (!cancel) {
+      const screenshot = await send('Page.captureScreenshot', { format: 'png' });
+      const surface = source.startsWith('#playlistNav') ? 'playlists' : source.startsWith('#queueList') ? 'queue' : 'songs';
+      await fs.writeFile(path.join(artifactDirectory, `drag-animation-${surface}.png`), Buffer.from(screenshot.data, 'base64'));
+    }
     assert.equal(await evaluate("document.body.classList.contains('list-reordering')"), true);
     if (cancel) await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await mouse('mouseReleased', b.x, b.y);
-    await delay(80);
+    assert.equal(await evaluate("Boolean(document.querySelector('.reorder-settling'))"), true, 'Release/cancel animates back into the list');
+    await delay(300);
     assert.equal(await evaluate("document.body.classList.contains('list-reordering')"), false);
+    assert.equal(await evaluate("document.querySelectorAll('.reorder-drag-preview, .reorder-source, .reorder-shifting').length"), 0, 'Animation state is fully cleaned up');
   };
   const titleOrder = () => evaluate('getVisibleTracks().map(track => track.title)');
   const trackSelector = (index) => `#trackList [data-track-index="${index}"]`;
   try {
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
     await fs.mkdir(artifactDirectory, { recursive: true });
     const paths = [];
     for (const title of ['Alpha', 'Bravo', 'Charlie', 'Delta']) {
@@ -114,6 +132,7 @@ async function main() {
     await delay(200);
     assert.equal(await evaluate('audio.paused'), false);
     await evaluate('audio.pause(); closeQueueMenu();');
+    await delay(300);
 
     await evaluate("state.view = 'library'; state.library.forEach(track => track.artist = ['Alpha', 'Charlie'].includes(track.title) ? 'match' : 'hidden'); rebuildTrackIndex(); state.search = 'match'; renderView();");
     await drag(trackSelector(1), trackSelector(0));
@@ -166,13 +185,30 @@ async function main() {
     assert.ok(await evaluate(`state.queue.findIndex(track => track.id === ${JSON.stringify(queueSource)})`) > 8);
     assert.ok(await evaluate("document.querySelectorAll('#queueList [data-queue-id]').length") < 50);
     await evaluate("closeQueueMenu(); document.querySelector('.main-content').scrollTop = 0; renderLibrary();");
+    await delay(300);
     await send('Emulation.setDeviceMetricsOverride', { width: 1040, height: 680, deviceScaleFactor: 1, mobile: false });
     const layout = await evaluate("(() => { const select = document.querySelector('#sortSelect').getBoundingClientRect(); const main = document.querySelector('.main-content').getBoundingClientRect(); return { inside: select.left >= main.left && select.right <= main.right, overflow: document.documentElement.scrollWidth > innerWidth }; })()");
     assert.deepEqual(layout, { inside: true, overflow: false });
     const compactScreenshot = await send('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(artifactDirectory, 'reorder-compact-ui.png'), Buffer.from(compactScreenshot.data, 'base64'));
     await send('Emulation.clearDeviceMetricsOverride');
-    console.log('PASS: native pointer drags, library/favorites/playlists/queue, persistence, filtered order, Escape, playback continuity, virtual scrolling (10,000 songs / 1,000 queued), compact layout');
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await evaluate("state.queue = state.library.slice(0, 3); renderQueue(); document.querySelector('#queueList').scrollTop = 0; openQueueMenu();");
+    await delay(300);
+    const reducedIds = await evaluate('state.queue.map(track => track.id)');
+    const reducedStart = await point('#queueList .queue-item:nth-child(1)');
+    const reducedEnd = await point('#queueList .queue-item:nth-child(3)', .8);
+    await mouse('mousePressed', reducedStart.x, reducedStart.y);
+    await mouse('mouseMoved', reducedStart.x + 8, reducedStart.y);
+    await mouse('mouseMoved', reducedEnd.x, reducedEnd.y);
+    await delay(50);
+    assert.equal(await evaluate("document.querySelector('.reorder-drag-preview').getAnimations().length"), 0);
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.reorder-shifting')).transitionDuration"), '0s');
+    await mouse('mouseReleased', reducedEnd.x, reducedEnd.y);
+    assert.deepEqual(await evaluate('state.queue.map(track => track.id)'), [reducedIds[1], reducedIds[2], reducedIds[0]]);
+    assert.equal(await evaluate("document.querySelectorAll('.reorder-drag-preview, .reorder-source, .reorder-shifting').length"), 0);
+    await send('Emulation.setEmulatedMedia', { features: [] });
+    console.log('PASS: animated pointer drags and cleanup, reduced motion, library/favorites/playlists/queue, persistence, filtered order, Escape, playback continuity, virtual scrolling (10,000 songs / 1,000 queued), compact layout');
   } finally {
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }).catch(() => {});
     await mouse('mouseReleased', 0, 0).catch(() => {});
