@@ -248,6 +248,9 @@ const state = {
   listeningStats: normalizeListeningStats(readStorage('listeningStats', { days: {} })),
   listeningSession: null,
   listeningPersistTicks: 0,
+  statsCategory: 'listening',
+  statsPeriod: 'week',
+  statsTrendMetric: 'seconds',
   trackById: new Map(),
   trackByPath: new Map(),
   trackSearchText: new Map()
@@ -271,14 +274,6 @@ function formatSize(bytes) {
   if (!bytes) return '0 MB';
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(bytes > 100 * 1024 ** 2 ? 0 : 1)} MB`;
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
-}
-
-function formatDuration(seconds) {
-  const totalMinutes = Math.floor((Number(seconds) || 0) / 60);
-  if (totalMinutes < 60) return `${totalMinutes} 分钟`;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return minutes ? `${hours} 小时 ${minutes} 分` : `${hours} 小时`;
 }
 
 function formatListeningDuration(seconds) {
@@ -331,10 +326,6 @@ function aggregateListeningPeriod(period) {
 function listeningPeriodSummary(period) {
   const { seconds, plays, trackCount, topTrack } = aggregateListeningPeriod(period);
   return { seconds, plays, trackCount, topTrack };
-}
-
-function totalListeningSeconds() {
-  return Object.values(state.listeningStats?.days || {}).reduce((sum, day) => sum + (Number(day.seconds) || 0), 0);
 }
 
 function beginListeningSession(track) {
@@ -1649,110 +1640,22 @@ function renderNowPlaying() {
   updateLyricsOffsetUI();
 }
 
-function countBy(items, getLabel) {
-  const counts = new Map();
-  items.forEach((item) => {
-    const label = getLabel(item) || '未知';
-    counts.set(label, (counts.get(label) || 0) + 1);
-  });
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'));
-}
-
-function renderRanking(items, emptyText) {
-  if (!items.length) return `<div class="stats-empty">${emptyText}</div>`;
-  const max = Math.max(...items.map(([, value]) => value), 1);
-  return items.slice(0, 6).map(([label, value], index) => `
-    <div class="stats-rank-row">
-      <span class="stats-rank-index">${String(index + 1).padStart(2, '0')}</span>
-      <span class="stats-rank-main"><strong>${escapeHtml(label)}</strong><i><b style="width:${value / max * 100}%"></b></i></span>
-      <em>${value} 首</em>
-    </div>`).join('');
-}
+const statisticsDashboard = window.createStatisticsDashboard({
+  root: $('#statsSection'), state, escapeHtml, formatListeningDuration, formatSize,
+  onPlay: (id) => loadTrack(state.trackById.get(id)),
+  onPlaylist: (id) => {
+    state.activePlaylistId = id;
+    state.view = 'playlist';
+    renderView();
+  }
+});
 
 function renderStatistics() {
-  const tracks = state.library;
-  const totalDuration = tracks.reduce((sum, track) => sum + (Number(track.duration) || 0), 0);
-  const totalBytes = tracks.reduce((sum, track) => sum + (Number(track.size) || 0), 0);
-  const storagePercent = Math.min(100, Math.max(2, totalBytes / (10 * 1024 ** 3) * 100));
-  const favoriteCount = tracks.filter((track) => state.favorites.has(track.id)).length;
-  const historyIds = new Set(state.history);
-  const recentCount = tracks.filter((track) => historyIds.has(track.id)).length;
-  const artists = countBy(tracks, (track) => track.artist || '未知艺术家');
-  const albums = countBy(tracks, (track) => track.album || '未知专辑');
-  const durationGroups = [
-    ['3 分钟以内', tracks.filter((track) => (Number(track.duration) || 0) < 180).length],
-    ['3–5 分钟', tracks.filter((track) => Number(track.duration) >= 180 && Number(track.duration) <= 300).length],
-    ['5 分钟以上', tracks.filter((track) => Number(track.duration) > 300).length]
-  ];
-  const maxDurationGroup = Math.max(...durationGroups.map(([, value]) => value), 1);
-  const listeningPeriods = [
-    ['近一天', 'day'],
-    ['近一周', 'week'],
-    ['近一个月', 'month'],
-    ['近一年', 'year']
-  ].map(([label, key]) => [label, key, aggregateListeningPeriod(key)]);
-
-  $('#statsSection').innerHTML = `
-    <div class="stats-summary-grid">
-      <article class="stats-summary-card primary"><span>音乐总数</span><strong>${tracks.length}</strong><small>首本地歌曲</small></article>
-      <article class="stats-summary-card"><span>乐库总时长</span><strong>${formatDuration(totalDuration)}</strong><small>完整播放一遍</small></article>
-      <article class="stats-summary-card"><span>累计聆听</span><strong id="statsTotalListening">${formatListeningDuration(totalListeningSeconds())}</strong><small>从播放第一秒开始累计</small></article>
-      <article class="stats-summary-card storage"><span>存储占用</span><strong>${formatSize(totalBytes)}</strong><div class="stats-storage-track"><i style="width:${storagePercent}%"></i></div><small>本地音乐 · 仅保存在你的设备上</small></article>
-    </div>
-    <div class="listening-period-section">
-      <div class="listening-period-heading"><div><span>LISTENING</span><h3>听歌时间统计</h3></div><small>时长实时累计 · 歌曲数需听满 1 分钟</small></div>
-      <div class="listening-period-grid">
-        ${listeningPeriods.map(([label, key, period]) => `
-          <article class="listening-period-card" data-listening-period="${key}">
-            <span>${label}</span>
-            <strong data-listening-duration>${formatListeningDuration(period.seconds)}</strong>
-            <div><em data-listening-tracks>${period.trackCount} 首歌曲</em><i data-listening-plays>${period.plays} 次有效播放</i></div>
-            <section class="listening-period-top">
-              <small>听得最多</small>
-              <b data-listening-top-title title="${escapeHtml(period.topTrack?.title || '暂无数据')}">${escapeHtml(period.topTrack?.title || '暂无数据')}</b>
-              <em data-listening-top-plays>${period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放'}</em>
-            </section>
-          </article>`).join('')}
-      </div>
-    </div>
-    <div class="stats-facts">
-      <div><span>喜欢的音乐</span><strong>${favoriteCount}</strong></div>
-      <div><span>我的歌单</span><strong>${state.playlists.length}</strong></div>
-      <div><span>播放记录</span><strong>${recentCount}</strong></div>
-      <div><span>艺术家</span><strong>${artists.length}</strong></div>
-      <div><span>专辑</span><strong>${albums.length}</strong></div>
-    </div>
-    <div class="stats-panel-grid">
-      <article class="stats-panel">
-        <header><div><span>ARTISTS</span><h3>艺术家分布</h3></div><small>按歌曲数量</small></header>
-        <div class="stats-ranking">${renderRanking(artists, '添加音乐后，这里会展示艺术家分布')}</div>
-      </article>
-      <article class="stats-panel">
-        <header><div><span>DURATION</span><h3>歌曲时长分布</h3></div><small>${formatDuration(totalDuration)}</small></header>
-        <div class="duration-distribution">
-          ${durationGroups.map(([label, value]) => `<div class="duration-row"><div><span>${label}</span><em>${value} 首</em></div><i><b style="width:${value / maxDurationGroup * 100}%"></b></i></div>`).join('')}
-        </div>
-        <div class="stats-album-note"><span>收录最多的专辑</span><strong>${albums.length ? escapeHtml(albums[0][0]) : '暂无数据'}</strong><em>${albums.length ? `${albums[0][1]} 首歌曲` : '添加音乐后显示'}</em></div>
-      </article>
-    </div>`;
+  statisticsDashboard.render();
 }
 
 function updateLiveStatistics() {
-  const total = $('#statsTotalListening');
-  if (!total) return renderStatistics();
-  total.textContent = formatListeningDuration(totalListeningSeconds());
-  ['day', 'week', 'month', 'year'].forEach((key) => {
-    const card = document.querySelector(`[data-listening-period="${key}"]`);
-    if (!card) return;
-    const period = aggregateListeningPeriod(key);
-    card.querySelector('[data-listening-duration]').textContent = formatListeningDuration(period.seconds);
-    card.querySelector('[data-listening-tracks]').textContent = `${period.trackCount} 首歌曲`;
-    card.querySelector('[data-listening-plays]').textContent = `${period.plays} 次有效播放`;
-    const topTitle = card.querySelector('[data-listening-top-title]');
-    topTitle.textContent = period.topTrack?.title || '暂无数据';
-    topTitle.title = period.topTrack?.title || '暂无数据';
-    card.querySelector('[data-listening-top-plays]').textContent = period.topTrack ? `${period.topTrack.plays} 次` : '尚无有效播放';
-  });
+  statisticsDashboard.update();
 }
 
 function updateStats({ liveOnly = false } = {}) {
