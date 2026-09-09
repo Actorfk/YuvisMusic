@@ -3033,6 +3033,10 @@ function executeKeyboardShortcut(action) {
   else if (action === 'closeGameLyrics') {
     state.gameLyricsSettings.enabled = !state.gameLyricsSettings.enabled;
     applyGameLyricsSettings();
+  } else if (action === 'toggleGameLyricsLock') {
+    state.gameLyricsSettings.locked = !state.gameLyricsSettings.locked;
+    applyGameLyricsSettings({ updateVisibility: false });
+    showToast(state.gameLyricsSettings.locked ? '游戏歌词已锁定' : '游戏歌词已解锁');
   } else if (action === 'search') {
     closeModals();
     closeNowPlayingPage();

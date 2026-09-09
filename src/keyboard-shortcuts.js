@@ -11,7 +11,8 @@
     next: { label: '下一曲', defaultShortcut: { code: 'ArrowRight', ctrl: true, alt: false, shift: false, meta: false } },
     search: { label: '聚焦搜索', defaultShortcut: { code: 'KeyK', ctrl: true, alt: false, shift: false, meta: false } },
     // Retain the saved action ID so existing custom bindings continue to work.
-    closeGameLyrics: { label: '开启 / 关闭游戏歌词', defaultShortcut: { code: 'KeyL', ctrl: true, alt: true, shift: true, meta: false } }
+    closeGameLyrics: { label: '开启 / 关闭游戏歌词', defaultShortcut: { code: 'KeyL', ctrl: true, alt: true, shift: true, meta: false } },
+    toggleGameLyricsLock: { label: '锁定 / 解锁游戏歌词', defaultShortcut: { code: 'KeyR', ctrl: true, alt: false, shift: false, meta: false } }
   };
 
   function shortcutSignature(shortcut) {
@@ -31,10 +32,12 @@
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const shortcuts = Object.fromEntries(Object.entries(SHORTCUT_ACTIONS).map(([action, config]) => [action, normalizeShortcut(source[action], config.defaultShortcut)]));
     // Adding an action must not reset shortcuts saved by earlier versions.
-    if (!source.closeGameLyrics) {
-      const used = new Set(Object.entries(shortcuts).filter(([action]) => action !== 'closeGameLyrics').map(([, shortcut]) => shortcutAccelerator(backgroundShortcut(shortcut))));
-      const candidates = [shortcuts.closeGameLyrics, { ...shortcuts.closeGameLyrics, shift: !shortcuts.closeGameLyrics.shift }, ...Array.from({ length: 12 }, (_, index) => ({ ...shortcuts.closeGameLyrics, code: `F${index + 1}` }))];
-      shortcuts.closeGameLyrics = candidates.find((shortcut) => !used.has(shortcutAccelerator(backgroundShortcut(shortcut))));
+    for (const action of ['closeGameLyrics', 'toggleGameLyricsLock']) {
+      if (source[action]) continue;
+      const used = new Set(Object.entries(shortcuts).filter(([other]) => other !== action).map(([, shortcut]) => shortcutAccelerator(backgroundShortcut(shortcut))));
+      const fallback = shortcuts[action];
+      const candidates = [fallback, { ...fallback, shift: !fallback.shift }, ...Array.from({ length: 12 }, (_, index) => ({ ...fallback, code: `F${index + 1}` }))];
+      shortcuts[action] = candidates.find((shortcut) => !used.has(shortcutAccelerator(backgroundShortcut(shortcut))));
     }
     const signatures = Object.values(shortcuts).map(shortcutSignature);
     return new Set(signatures).size === signatures.length ? shortcuts : defaultKeyboardShortcuts();

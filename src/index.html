@@ -396,6 +396,7 @@
             <div class="shortcut-setting-row"><span><strong>下一曲</strong><small>切换到播放列表中的下一首音乐</small></span><button type="button" data-shortcut-action="next" aria-label="设置下一曲快捷键"></button></div>
             <div class="shortcut-setting-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><button type="button" data-shortcut-action="search" aria-label="设置聚焦搜索快捷键"></button></div>
             <div class="shortcut-setting-row"><span><strong>开启 / 关闭游戏歌词</strong><small>按下切换游戏歌词显示，锁定时也可使用</small></span><button type="button" data-shortcut-action="closeGameLyrics" aria-label="设置开启或关闭游戏歌词快捷键"></button></div>
+            <div class="shortcut-setting-row"><span><strong>锁定 / 解锁游戏歌词</strong><small>切换鼠标穿透与拖动操作，播放器在后台时也可使用</small></span><button type="button" data-shortcut-action="toggleGameLyricsLock" aria-label="设置锁定或解锁游戏歌词快捷键"></button></div>
           </div>
           <div class="shortcut-settings-actions">
             <span>录入时按 Esc 可取消；重复的组合键不会保存。</span>
@@ -437,7 +438,7 @@
           <div class="setting-list compact-setting-list">
             <label class="setting-row"><span><strong>显示游戏歌词</strong><small>拖动后自动吸附到当前屏幕左侧或右侧</small></span><input id="gameLyricsEnabledInput" class="switch-input" type="checkbox" /></label>
             <label class="setting-row"><span><strong>双层歌词</strong><small>优先显示翻译，没有翻译时显示下一句</small></span><input id="gameLyricsDualInput" class="switch-input" type="checkbox" /></label>
-            <label class="setting-row"><span><strong>锁定游戏歌词</strong><small>鼠标穿透到游戏，不显示歌词鼠标；关闭此开关可解锁</small></span><input id="gameLyricsLockedInput" class="switch-input" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>锁定游戏歌词</strong><small>鼠标穿透到游戏；可用快捷键切换锁定，组合键在“快捷键”中设置</small></span><input id="gameLyricsLockedInput" class="switch-input" type="checkbox" /></label>
           </div>
           <div class="setting-block game-lyrics-font-block">
             <span class="setting-label">覆盖层字号</span>
@@ -584,6 +585,7 @@
         <div class="shortcut-row"><span><strong>下一曲</strong><small>切换到播放列表中的下一首音乐</small></span><div class="shortcut-keys" data-shortcut-display="next"></div></div>
         <div class="shortcut-row"><span><strong>聚焦搜索</strong><small>立即定位到音乐库搜索框</small></span><div class="shortcut-keys" data-shortcut-display="search"></div></div>
         <div class="shortcut-row"><span><strong>开启 / 关闭游戏歌词</strong><small>切换歌词显示，播放器在后台或歌词锁定时也可使用</small></span><div class="shortcut-keys" data-shortcut-display="closeGameLyrics"></div></div>
+        <div class="shortcut-row"><span><strong>锁定 / 解锁游戏歌词</strong><small>切换鼠标穿透与拖动操作，播放器在后台时也可使用</small></span><div class="shortcut-keys" data-shortcut-display="toggleGameLyricsLock"></div></div>
         <div class="reserved-inline"><i></i><span>可在设置中自定义这些组合键</span><button id="openShortcutSettingsBtn" type="button">前往设置</button></div>
       </div>
     </article>

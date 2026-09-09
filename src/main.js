@@ -1173,6 +1173,7 @@ app.whenReady().then(() => {
     onAction: (action) => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       if (action === 'closeGameLyrics') return setGameLyricsVisible(!gameLyricsVisible);
+      if (action === 'toggleGameLyricsLock') return setGameLyricsLocked(!gameLyricsSettings.locked);
       if (action === 'search') {
         if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.show();

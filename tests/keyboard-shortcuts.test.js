@@ -32,6 +32,7 @@ test('background shortcuts preserve regular typing and map supported accelerator
   assert.equal(shortcutAccelerator(backgroundShortcut(shortcuts.togglePlayback)), 'Control+Alt+Space');
   assert.equal(shortcutAccelerator(backgroundShortcut(shortcuts.previous)), 'Control+Left');
   assert.equal(shortcutAccelerator(shortcuts.closeGameLyrics), 'Control+Alt+Shift+L');
+  assert.equal(shortcutAccelerator(backgroundShortcut(shortcuts.toggleGameLyricsLock)), 'Control+R');
   assert.equal(shortcutAccelerator(backgroundShortcut({ code: 'KeyP' })), 'Control+Alt+P');
   assert.equal(shortcutAccelerator(backgroundShortcut({ code: 'F8' })), 'F8');
   assert.equal(shortcutAccelerator({ code: 'Numpad3', ctrl: true }), 'Control+num3');
@@ -49,22 +50,34 @@ test('older saved shortcuts survive addition of close-game-lyrics even when its 
   assert.deepEqual(normalizeKeyboardShortcuts(null), defaultKeyboardShortcuts());
 });
 
+test('older saved shortcuts gain a lock binding without overwriting an occupied Ctrl+R', () => {
+  const old = defaultKeyboardShortcuts();
+  delete old.toggleGameLyricsLock;
+  assert.equal(shortcutAccelerator(normalizeKeyboardShortcuts(old).toggleGameLyricsLock), 'Control+R');
+  old.search = { code: 'KeyR', ctrl: true, alt: false, shift: false, meta: false };
+  const migrated = normalizeKeyboardShortcuts(old);
+  for (const action of Object.keys(old)) assert.deepEqual(migrated[action], old[action]);
+  assert.equal(shortcutAccelerator(migrated.toggleGameLyricsLock), 'Control+Shift+R');
+  assert.deepEqual(normalizeKeyboardShortcuts(migrated), migrated);
+});
+
 test('background actions register once, foreground releases them, stale callbacks cannot double-fire', () => {
   const f = fixture();
   f.manager.refresh();
-  assert.equal(f.registered.size, 5);
+  assert.equal(f.registered.size, 6);
   const callback = f.registered.get('Control+Alt+Space');
   callback();
   f.registered.get('Control+Alt+Shift+L')();
-  assert.deepEqual(f.actions, ['togglePlayback', 'closeGameLyrics']);
+  f.registered.get('Control+R')();
+  assert.deepEqual(f.actions, ['togglePlayback', 'closeGameLyrics', 'toggleGameLyricsLock']);
   f.setForeground(true);
   f.manager.refresh();
   assert.equal(f.registered.size, 0);
   callback();
-  assert.equal(f.actions.length, 2);
+  assert.equal(f.actions.length, 3);
   f.setForeground(false);
   f.manager.refresh();
-  assert.equal(f.registered.size, 5);
+  assert.equal(f.registered.size, 6);
   assert.equal(f.status.togglePlayback.error, '');
 });
 
@@ -74,13 +87,18 @@ test('rebind, reset and shutdown release only registrations owned by the player'
   f.manager.refresh();
   const updated = defaultKeyboardShortcuts();
   updated.closeGameLyrics.code = 'KeyJ';
+  updated.toggleGameLyricsLock.code = 'KeyU';
   f.manager.update(updated);
   assert.equal(f.registered.has('Control+Alt+Shift+L'), false);
+  assert.equal(f.registered.has('Control+R'), false);
   f.registered.get('Control+Alt+Shift+J')();
-  assert.deepEqual(f.actions, ['closeGameLyrics']);
+  f.registered.get('Control+U')();
+  assert.deepEqual(f.actions, ['closeGameLyrics', 'toggleGameLyricsLock']);
   f.manager.update(defaultKeyboardShortcuts());
   assert.equal(f.registered.has('Control+Alt+Shift+J'), false);
   assert.equal(f.registered.has('Control+Alt+Shift+L'), true);
+  assert.equal(f.registered.has('Control+U'), false);
+  assert.equal(f.registered.has('Control+R'), true);
   f.manager.release();
   assert.deepEqual([...f.registered.keys()], ['Control+F12']);
 });
