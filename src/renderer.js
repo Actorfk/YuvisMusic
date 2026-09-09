@@ -240,7 +240,7 @@ const state = {
   historyConfirmedTrackId: null,
   view: 'library',
   search: '',
-  sortAscending: true,
+  listSortModes: readObjectStorage('listSortModes'),
   shuffle: Boolean(savedAppSettings.shuffle),
   repeat: ['off', 'all', 'one'].includes(savedAppSettings.repeat) ? savedAppSettings.repeat : 'off',
   settingsSection: 'playback',
@@ -1440,7 +1440,7 @@ function currentTrack() {
 
 function getVisibleTracks() {
   let tracks;
-  if (state.view === 'favorite') tracks = state.library.filter((track) => state.favorites.has(track.id));
+  if (state.view === 'favorite') tracks = [...state.favorites].map((id) => state.trackById.get(id)).filter(Boolean);
   if (state.view === 'recent') {
     tracks = state.history.map((id) => state.trackById.get(id)).filter(Boolean);
   } else if (state.view === 'playlist') tracks = playlistTracks(activePlaylist());
@@ -1449,12 +1449,27 @@ function getVisibleTracks() {
   if (query) {
     tracks = tracks.filter((track) => state.trackSearchText.get(track.id)?.includes(query));
   }
-  if (state.view !== 'recent') {
-    tracks.sort((a, b) => state.sortAscending
+  const sortMode = currentListSortMode();
+  if (state.view !== 'recent' && sortMode !== 'manual') {
+    tracks.sort((a, b) => sortMode === 'title-asc'
       ? a.title.localeCompare(b.title, 'zh-CN')
       : b.title.localeCompare(a.title, 'zh-CN'));
   }
   return tracks;
+}
+
+function currentListSortKey() {
+  return state.view === 'playlist' ? `playlist:${state.activePlaylistId}` : state.view;
+}
+
+function currentListSortMode() {
+  const mode = state.listSortModes[currentListSortKey()];
+  return ['manual', 'title-asc', 'title-desc'].includes(mode) ? mode : 'title-asc';
+}
+
+function setListSortMode(mode) {
+  state.listSortModes[currentListSortKey()] = mode;
+  localStorage.setItem('listSortModes', JSON.stringify(state.listSortModes));
 }
 
 function playlistTracks(playlist) {
@@ -1477,7 +1492,7 @@ function playlistArtwork(playlist, size = 'small') {
 function renderPlaylistNav() {
   releaseCoverImages($('#playlistNav'));
   $('#playlistNav').innerHTML = state.playlists.map((playlist) => `
-    <button class="nav-item ${state.view === 'playlist' && state.activePlaylistId === playlist.id ? 'active' : ''}" data-playlist-id="${escapeHtml(playlist.id)}">
+    <button class="nav-item ${state.view === 'playlist' && state.activePlaylistId === playlist.id ? 'active' : ''}" data-playlist-id="${escapeHtml(playlist.id)}" title="拖动调整歌单顺序">
       ${playlistArtwork(playlist, 'small')}
       <span>${escapeHtml(playlist.name)}</span><em>${playlist.trackPaths.length}</em>
     </button>`).join('');
@@ -1541,6 +1556,11 @@ function renderLibraryRows(tracks, { force = false } = {}) {
 
 function renderLibrary() {
   const tracks = getVisibleTracks();
+  const reorderable = ['library', 'favorite', 'playlist'].includes(state.view);
+  $('#trackList').dataset.reorderable = String(reorderable);
+  $('#trackList').title = reorderable ? '拖动歌曲调整顺序，双击播放' : '双击播放';
+  $('#sortSelect').hidden = !reorderable;
+  $('#sortSelect').value = currentListSortMode();
   renderedLibraryTracks = tracks;
   $('#trackSummary').textContent = `${tracks.length} 首歌曲`;
   $('#libraryBadge').textContent = state.library.length;
@@ -1565,7 +1585,7 @@ function renderLibrary() {
 function renderQueueItem(track) {
   const failure = state.failedTracks.get(track.id);
   return `
-    <div class="queue-item ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-queue-id="${escapeHtml(track.id)}"${failure ? ` title="${escapeHtml(failure.reason)}"` : ''}>
+    <div class="queue-item ${track.id === state.currentId ? 'current' : ''} ${failure ? 'playback-failed' : ''}" data-queue-id="${escapeHtml(track.id)}" title="${failure ? escapeHtml(failure.reason) : '拖动调整播放顺序'}">
       <span class="queue-cover" ${coverStyle(track)}>${track.cover ? '' : '♪'}</span>
       <span class="queue-text"><strong>${escapeHtml(track.title)}</strong><span>${escapeHtml(track.artist)}${failure ? `<em class="track-failure-badge">${playbackFailureLabel(failure)}</em>` : ''}</span></span>
       <button class="remove-queue" data-remove-id="${escapeHtml(track.id)}" aria-label="移出队列"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -2499,6 +2519,75 @@ function addTrackToPlaylist(playlistId) {
   if (state.view === 'playlist') renderLibrary();
 }
 
+const { reorderVisibleItems, installPointerReorder } = window.YuvisListReorder;
+
+installPointerReorder({
+  container: $('#trackList'),
+  scroller: $('.main-content'),
+  rowSelector: '[data-track-id]',
+  keyOfRow: (row) => row.dataset.trackId,
+  getContext: () => ['library', 'favorite', 'playlist'].includes(state.view)
+    ? { listKey: currentListSortKey(), search: state.search, ids: getVisibleTracks().map((track) => track.id) } : null,
+  refreshRows: () => renderLibraryRows(renderedLibraryTracks),
+  onMove: (context, sourceId, targetId, after) => {
+    if (context.listKey !== currentListSortKey() || context.search !== state.search) return;
+    if (state.view === 'playlist') {
+      const playlist = activePlaylist();
+      if (!playlist || context.ids.some((id) => !state.trackById.has(id))) return;
+      const pathForId = (id) => trackPathKey(state.trackById.get(id).path);
+      const reordered = reorderVisibleItems(playlist.trackPaths, context.ids.map(pathForId), pathForId(sourceId), pathForId(targetId), after, trackPathKey);
+      if (reordered === playlist.trackPaths) return;
+      playlist.trackPaths = reordered;
+      persistPlaylists();
+      renderPlaylistNav();
+    } else if (state.view === 'favorite') {
+      const favorites = [...state.favorites];
+      const reordered = reorderVisibleItems(favorites, context.ids, sourceId, targetId, after, (id) => id);
+      if (reordered === favorites) return;
+      state.favorites = new Set(reordered);
+      localStorage.setItem('favorites', JSON.stringify(reordered));
+    } else {
+      const reordered = reorderVisibleItems(state.library, context.ids, sourceId, targetId, after);
+      if (reordered === state.library) return;
+      state.library = reordered;
+      persistLibrary();
+    }
+    setListSortMode('manual');
+    renderLibrary();
+    showToast('歌曲顺序已保存');
+  }
+});
+
+installPointerReorder({
+  container: $('#playlistNav'),
+  rowSelector: '[data-playlist-id]',
+  keyOfRow: (row) => row.dataset.playlistId,
+  getContext: () => state.playlists.map((playlist) => playlist.id),
+  onMove: (ids, sourceId, targetId, after) => {
+    const reordered = reorderVisibleItems(state.playlists, ids, sourceId, targetId, after);
+    if (reordered === state.playlists) return;
+    state.playlists = reordered;
+    persistPlaylists();
+    renderPlaylistNav();
+    showToast('歌单顺序已保存');
+  }
+});
+
+installPointerReorder({
+  container: $('#queueList'),
+  rowSelector: '[data-queue-id]',
+  keyOfRow: (row) => row.dataset.queueId,
+  getContext: () => state.queue.map((track) => track.id),
+  refreshRows: () => renderQueueRows(),
+  onMove: (ids, sourceId, targetId, after) => {
+    const reordered = reorderVisibleItems(state.queue, ids, sourceId, targetId, after);
+    if (reordered === state.queue) return;
+    state.queue = reordered;
+    renderQueue();
+    showToast('播放顺序已调整');
+  }
+});
+
 $('#trackList').addEventListener('dblclick', (event) => {
   if (event.target.closest('button')) return;
   const row = event.target.closest('[data-track-id]');
@@ -2911,10 +3000,10 @@ $('#playAllBtn').addEventListener('click', () => {
   if (state.queue.length) loadTrack(state.queue[0]); else showToast('当前列表没有音乐');
 });
 $('#clearQueueBtn').addEventListener('click', () => { state.queue = []; renderQueue(); });
-$('#sortBtn').addEventListener('click', () => {
-  state.sortAscending = !state.sortAscending;
+$('#sortSelect').addEventListener('change', (event) => {
+  setListSortMode(event.target.value);
   renderLibrary();
-  showToast(state.sortAscending ? '已按标题升序排列' : '已按标题降序排列');
+  showToast({ manual: '已切换为手动排序，可拖动歌曲调整', 'title-asc': '已按标题升序排列', 'title-desc': '已按标题降序排列' }[event.target.value]);
 });
 $('#queueToggleBtn').addEventListener('click', toggleQueueMenu);
 $('#shuffleBtn').addEventListener('click', () => {
