@@ -2057,7 +2057,10 @@ function renderAIDocumentation() {
 }
 
 function renderAssistant() {
-  const visibleMessages = state.assistantMessages.filter((message) => ['user', 'assistant'].includes(message.role) && message.content);
+  // Normalize only the display copy; tool-call messages must remain intact in API history.
+  const visibleMessages = state.assistantMessages
+    .filter((message) => ['user', 'assistant'].includes(message.role) && typeof message.content === 'string' && message.content.trim())
+    .map((message) => ({ ...message, content: message.role === 'assistant' ? message.content.trimStart() : message.content }));
   $('#assistantWelcome').hidden = visibleMessages.length > 0;
   $('#assistantMessages').innerHTML = visibleMessages.map((message) => `
     <article class="assistant-message ${message.role}">
