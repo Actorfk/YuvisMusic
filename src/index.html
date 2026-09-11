@@ -387,7 +387,7 @@
               <button data-repeat-mode="off">关闭循环</button><button data-repeat-mode="all">列表循环</button><button data-repeat-mode="one">单曲循环</button>
             </div>
           </div>
-          <div class="settings-save-note"><i></i><span>音量、静音、随机、循环和歌词设置都会在更改时立即保存。</span></div>
+          <div class="settings-save-note"><i></i><span>自动记住当前歌曲、播放进度和队列，下次启动时恢复并保持暂停。音量、静音、随机、循环和歌词设置也会自动保存。</span></div>
         </div>
 
         <div class="settings-panel shortcut-settings-panel" data-settings-panel="shortcuts" hidden>
@@ -596,6 +596,7 @@
   <div class="toast" id="toast"></div>
   <audio id="audio"></audio>
   <script src="track-identity.js"></script>
+  <script src="playback-session.js"></script>
   <script src="virtual-list.js"></script>
   <script src="list-reorder.js"></script>
   <script src="keyboard-shortcuts.js"></script>

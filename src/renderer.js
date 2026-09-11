@@ -2,6 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 const audio = $('#audio');
 const { migrateStoredTrackIds } = window.YuvisTrackIdentity;
 const { computeVirtualWindow } = window.YuvisVirtualList;
+const { normalizePlaybackSession, resolvePlaybackSession, restoredPlaybackPosition } = window.YuvisPlaybackSession;
 
 const APPEARANCE_THEMES = {
   crimson: { color: '#cf0a2c', bright: '#e11436', soft: '#fff0f2', rgb: '207, 10, 44' },
@@ -174,6 +175,15 @@ if (JSON.stringify(migratedFavoriteIds) !== JSON.stringify(storedFavoriteIds)) {
 if (JSON.stringify(migratedHistoryIds) !== JSON.stringify(storedHistoryIds)) {
   localStorage.setItem('history', JSON.stringify(migratedHistoryIds));
 }
+
+const savedPlaybackSession = normalizePlaybackSession(readStorage('playbackSession', null));
+const startupLibraryPaths = readArrayStorage('libraryPaths').filter((item) => typeof item === 'string');
+let libraryRestoring = true;
+let playbackSessionReady = false;
+let playbackSessionChanged = false;
+let pendingPlaybackSeek = null;
+let lastPlaybackPersistAt = 0;
+let lastPlaybackSnapshot = '';
 
 const state = {
   library: [],
@@ -497,7 +507,38 @@ function applyCoverImages(root = document) {
 }
 
 function persistLibrary() {
-  localStorage.setItem('libraryPaths', JSON.stringify(state.library.map((track) => track.path)));
+  const paths = state.library.map((track) => track.path);
+  // Imports can finish before the startup scan; preserve the paths still being restored.
+  const savedPaths = libraryRestoring ? [...new Set([...startupLibraryPaths, ...paths])] : paths;
+  localStorage.setItem('libraryPaths', JSON.stringify(savedPaths));
+}
+
+function persistPlaybackSession({ userAction = false, force = true } = {}) {
+  if (userAction) playbackSessionChanged = true;
+  // Closing during startup must not replace the previous session with an empty player.
+  if (!playbackSessionReady && !playbackSessionChanged) return;
+  const now = Date.now();
+  if (!force && now - lastPlaybackPersistAt < 5000) return;
+  const track = currentTrack();
+  const position = pendingPlaybackSeek && pendingPlaybackSeek.trackId === track?.id ? pendingPlaybackSeek.position : audio.currentTime;
+  const snapshot = JSON.stringify({
+    version: 1,
+    queuePaths: state.queue.map((item) => item.path),
+    currentPath: track?.path || null,
+    position: Number.isFinite(position) && position >= 0 ? position : 0
+  });
+  try {
+    if (snapshot !== lastPlaybackSnapshot) localStorage.setItem('playbackSession', snapshot);
+    lastPlaybackSnapshot = snapshot;
+    lastPlaybackPersistAt = now;
+  } catch (error) {
+    console.warn('Unable to save playback session:', error.message);
+  }
+}
+
+function commitPlaybackQueue() {
+  renderQueue();
+  persistPlaybackSession({ userAction: true });
 }
 
 function persistPlaylists() {
@@ -1408,7 +1449,7 @@ function removeFailedTrackFromLists() {
   });
   if (affectedPlaylists) persistPlaylists();
   closePlaybackFailure();
-  renderQueue();
+  commitPlaybackQueue();
   renderPlaylistNav();
   renderLibrary();
   const removedFromQueue = queueBefore !== state.queue.length;
@@ -1791,7 +1832,7 @@ async function executeAssistantTool(name, args = {}) {
     if (!track) return { ok: false, error: '音乐库中没有找到匹配歌曲' };
     const exists = state.queue.some((item) => trackPathKey(item.path) === trackPathKey(track.path));
     if (!exists) state.queue.push(track);
-    renderQueue();
+    commitPlaybackQueue();
     return { ok: true, added: !exists, track: assistantTrack(track) };
   }
   if (name === 'remove_from_queue') {
@@ -1801,13 +1842,13 @@ async function executeAssistantTool(name, args = {}) {
       .some((value) => value.toLocaleLowerCase('zh-CN').includes(normalizedQuery)));
     if (index < 0) return { ok: false, error: '播放队列中没有找到匹配歌曲' };
     const [track] = state.queue.splice(index, 1);
-    renderQueue();
+    commitPlaybackQueue();
     return { ok: true, track: assistantTrack(track), remaining: state.queue.length };
   }
   if (name === 'clear_queue') {
     const removed = state.queue.length;
     state.queue = [];
-    renderQueue();
+    commitPlaybackQueue();
     return { ok: true, removed };
   }
   if (name === 'set_current_favorite') {
@@ -2277,15 +2318,18 @@ function addToHistory(id) {
   localStorage.setItem('history', JSON.stringify(state.history));
 }
 
-function loadTrack(track, autoplay = true) {
+function loadTrack(track, autoplay = true, { restoring = false, position = 0 } = {}) {
   if (!track) return;
   const previousId = state.currentId;
   beginListeningSession(track);
   state.currentId = track.id;
   state.playbackFailureTrackId = null;
   state.historyConfirmedTrackId = null;
-  if (!state.queue.some((item) => item.id === track.id)) state.queue.push(track);
+  if (!restoring && !state.queue.some((item) => item.id === track.id)) state.queue.push(track);
+  pendingPlaybackSeek = { trackId: track.id, position };
   audio.src = track.url;
+  updatePlaybackProgress();
+  persistPlaybackSession({ userAction: !restoring });
   $('#playerTitle').textContent = track.title;
   $('#playerArtist').textContent = track.artist;
   $('#playerCover').style.backgroundImage = track.cover ? `url('${track.cover}')` : '';
@@ -2486,7 +2530,7 @@ installPointerReorder({
     const reordered = reorderVisibleItems(state.queue, ids, sourceId, targetId, after);
     if (reordered === state.queue) return;
     state.queue = reordered;
-    renderQueue();
+    commitPlaybackQueue();
     showToast('播放顺序已调整');
   }
 });
@@ -2515,7 +2559,7 @@ $('#queueList').addEventListener('click', (event) => {
   const remove = event.target.closest('[data-remove-id]');
   if (remove) {
     state.queue = state.queue.filter((track) => track.id !== remove.dataset.removeId);
-    renderQueue();
+    commitPlaybackQueue();
     return;
   }
   const item = event.target.closest('[data-queue-id]');
@@ -2900,9 +2944,10 @@ $('#openNowPlaying').addEventListener('click', openNowPlayingPage);
 $('#closeNowPlayingBtn').addEventListener('click', closeNowPlayingPage);
 $('#playAllBtn').addEventListener('click', () => {
   state.queue = getVisibleTracks();
-  if (state.queue.length) loadTrack(state.queue[0]); else showToast('当前列表没有音乐');
+  if (state.queue.length) loadTrack(state.queue[0]);
+  else { commitPlaybackQueue(); showToast('当前列表没有音乐'); }
 });
-$('#clearQueueBtn').addEventListener('click', () => { state.queue = []; renderQueue(); });
+$('#clearQueueBtn').addEventListener('click', () => { state.queue = []; commitPlaybackQueue(); });
 $('#sortSelect').addEventListener('change', (event) => {
   setListSortMode(event.target.value);
   renderLibrary();
@@ -3132,6 +3177,7 @@ audio.addEventListener('play', () => {
   runLyricClock();
 });
 audio.addEventListener('pause', () => {
+  persistPlaybackSession();
   document.body.classList.remove('is-playing');
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   updateRenderedPlaybackState();
@@ -3140,18 +3186,26 @@ audio.addEventListener('pause', () => {
 });
 audio.addEventListener('error', () => showPlaybackFailure(currentTrack(), audio.error));
 audio.addEventListener('loadedmetadata', () => {
+  if (pendingPlaybackSeek?.trackId === state.currentId) {
+    audio.currentTime = restoredPlaybackPosition(pendingPlaybackSeek.position, audio.duration);
+    pendingPlaybackSeek = null;
+  }
   $('#totalTime').textContent = formatTime(audio.duration);
+  updatePlaybackProgress();
+  updateLyricPosition(audio.currentTime, true);
 });
 function updatePlaybackProgress() {
-  const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
-  $('#currentTime').textContent = formatTime(audio.currentTime);
-  $('#totalTime').textContent = formatTime(audio.duration);
+  const position = pendingPlaybackSeek?.trackId === state.currentId ? pendingPlaybackSeek.position : audio.currentTime;
+  const duration = Number.isFinite(audio.duration) ? audio.duration : currentTrack()?.duration || 0;
+  const ratio = duration ? Math.min(1, position / duration) : 0;
+  $('#currentTime').textContent = formatTime(position);
+  $('#totalTime').textContent = formatTime(duration);
   $('#progressBar').value = ratio * 100;
   updateRange($('#progressBar'), ratio);
 }
-audio.addEventListener('timeupdate', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime); });
+audio.addEventListener('timeupdate', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime); persistPlaybackSession({ force: false }); });
 audio.addEventListener('seeking', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); });
-audio.addEventListener('seeked', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); });
+audio.addEventListener('seeked', () => { updatePlaybackProgress(); updateLyricPosition(audio.currentTime, true); persistPlaybackSession(); });
 audio.addEventListener('ratechange', () => { if (!audio.paused) runLyricClock(); });
 audio.addEventListener('ended', () => {
   if (state.repeat === 'one') { beginListeningSession(currentTrack()); audio.currentTime = 0; attemptPlayback(); }
@@ -3159,6 +3213,7 @@ audio.addEventListener('ended', () => {
 });
 setInterval(tickListeningStatistics, 1000);
 window.addEventListener('beforeunload', () => {
+  persistPlaybackSession();
   localStorage.setItem('listeningStats', JSON.stringify(state.listeningStats));
 });
 
@@ -3222,17 +3277,33 @@ async function init() {
   renderQueue();
   updateStats();
   loadAssistantConfig().catch((error) => console.warn('Unable to initialize assistant:', error.message));
-  const savedPaths = readArrayStorage('libraryPaths').filter((item) => typeof item === 'string');
+  const savedPaths = [...new Set([...startupLibraryPaths, ...(savedPlaybackSession?.queuePaths || []), savedPlaybackSession?.currentPath].filter(Boolean))];
   if (savedPaths.length) {
     try {
       const restored = await window.desktop.restoreTracks(savedPaths);
-      setLibrary(restored);
+      const imported = new Map(state.library.map((track) => [trackPathKey(track.path), track]));
+      const restoredKeys = new Set(restored.map((track) => trackPathKey(track.path)));
+      setLibrary([
+        ...restored.map((track) => imported.get(trackPathKey(track.path)) || track),
+        ...state.library.filter((track) => !restoredKeys.has(trackPathKey(track.path)))
+      ]);
+      if (imported.size) persistLibrary();
       renderView();
       updateStats();
     } catch (error) {
       console.warn('Unable to restore library:', error.message);
     }
   }
+  libraryRestoring = false;
+  if (!playbackSessionChanged && savedPlaybackSession) {
+    const restoredSession = resolvePlaybackSession(savedPlaybackSession, state.library);
+    state.queue = restoredSession.queue;
+    if (restoredSession.currentTrack) {
+      loadTrack(restoredSession.currentTrack, false, { restoring: true, position: restoredSession.position });
+    }
+    renderQueue();
+  }
+  playbackSessionReady = true;
 }
 
 init();
