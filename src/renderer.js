@@ -254,6 +254,7 @@ const state = {
   shuffle: Boolean(savedAppSettings.shuffle),
   repeat: ['off', 'all', 'one'].includes(savedAppSettings.repeat) ? savedAppSettings.repeat : 'off',
   settingsSection: 'playback',
+  lyricsSettingsSection: 'desktopLyrics',
   listeningSeconds: Number(localStorage.getItem('listeningSeconds') || 0),
   listeningStats: normalizeListeningStats(readStorage('listeningStats', { days: {} })),
   listeningSession: null,
@@ -1191,24 +1192,36 @@ async function refreshLibraryCacheStatus() {
 
 function showSettingsSection(section) {
   const names = {
-    playback: ['播放设置', '控制音量与默认播放行为'],
+    playback: ['播放设置', '调整声音、播放方式与启动恢复'],
     shortcuts: ['快捷键', '自定义播放器的键盘组合键'],
-    desktopLyrics: ['桌面歌词', '调整桌面悬浮歌词的显示与外观'],
-    gameLyrics: ['游戏歌词', '可拖动并吸附屏幕左右边缘的透明置顶覆盖层'],
-    fullscreenLyrics: ['全屏歌词', '选择全屏歌词的布局与字号'],
-    appearance: ['外观设置', '选择应用界面的主题主色'],
+    desktopLyrics: ['歌词设置', '在其他窗口上方显示歌词，调整样式与颜色'],
+    gameLyrics: ['歌词设置', '在游戏中显示歌词，支持边缘吸附与鼠标穿透'],
+    fullscreenLyrics: ['歌词设置', '调整播放器内全屏歌词的布局与字号'],
+    appearance: ['外观设置', '调整主题主色与界面字号'],
     storage: ['存储与性能', '管理缓存并查看大曲库优化状态'],
-    yuvis: ['Yuvis 配置', '连接支持工具调用的 OpenAI 兼容模型']
+    yuvis: ['AI 助手', '配置 Yuvis 助手使用的模型服务']
   };
+  if (section === 'lyrics') section = state.lyricsSettingsSection;
+  const isLyricsSection = ['desktopLyrics', 'gameLyrics', 'fullscreenLyrics'].includes(section);
+  if (isLyricsSection) state.lyricsSettingsSection = section;
   state.settingsSection = names[section] ? section : 'playback';
   $('#settingsTitle').textContent = names[state.settingsSection][0];
   $('#settingsDescription').textContent = names[state.settingsSection][1];
   document.querySelectorAll('[data-settings-section]').forEach((button) => {
-    button.classList.toggle('active', button.dataset.settingsSection === state.settingsSection);
+    const active = button.dataset.settingsSection === (isLyricsSection ? 'lyrics' : state.settingsSection);
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+  });
+  $('#lyricsSettingsTabs').hidden = !isLyricsSection;
+  document.querySelectorAll('[data-lyrics-section]').forEach((button) => {
+    const active = button.dataset.lyricsSection === state.lyricsSettingsSection;
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
   });
   document.querySelectorAll('[data-settings-panel]').forEach((panel) => {
     panel.hidden = panel.dataset.settingsPanel !== state.settingsSection;
   });
+  $('.settings-content').scrollTop = 0;
   if (state.settingsSection === 'storage') refreshLibraryCacheStatus();
 }
 
@@ -2092,9 +2105,9 @@ async function saveAssistantConfiguration(clearApiKey = false) {
     state.assistantConfig = { ...state.assistantConfig, ...saved, loaded: true };
     renderAssistantConfig();
     renderAssistant();
-    showToast(clearApiKey ? 'API Key 已清除' : 'Yuvis 配置已保存');
+    showToast(clearApiKey ? 'API Key 已清除' : 'AI 助手设置已保存');
   } catch (error) {
-    showToast(error.message || '无法保存 Yuvis 配置');
+    showToast(error.message || '无法保存 AI 助手设置');
   } finally {
     button.disabled = false;
   }
@@ -2599,6 +2612,22 @@ $('#sidebarSettingsBtn').addEventListener('click', () => openSettings('playback'
 $('.settings-sidebar nav').addEventListener('click', (event) => {
   const button = event.target.closest('[data-settings-section]');
   if (button) showSettingsSection(button.dataset.settingsSection);
+});
+$('#lyricsSettingsTabs').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-lyrics-section]');
+  if (button) showSettingsSection(button.dataset.lyricsSection);
+});
+$('#lyricsSettingsTabs').addEventListener('keydown', (event) => {
+  const button = event.target.closest('[data-lyrics-section]');
+  if (!button || event.ctrlKey || event.altKey || event.metaKey || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const tabs = [...event.currentTarget.querySelectorAll('[data-lyrics-section]')];
+  const index = tabs.indexOf(button);
+  const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+    : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  showSettingsSection(tabs[nextIndex].dataset.lyricsSection);
+  tabs[nextIndex].focus();
 });
 $('#cleanLibraryCacheBtn').addEventListener('click', async (event) => {
   const button = event.currentTarget;

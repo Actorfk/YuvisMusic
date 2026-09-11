@@ -698,6 +698,21 @@ body.is-playing .play-button .pause-icon { display: block; }
 .settings-panel[hidden] { display: none; }
 .settings-section-title { display: flex; justify-content: space-between; align-items: center; color: #777; font-size: 12px; font-weight: 650; }
 .settings-section-title small { color: #aaa; font-size: 10px; font-weight: 400; }
+.settings-section-title h4 { margin: 0; font: inherit; }
+.settings-lyrics-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 18px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: #f6f5f3; }
+.settings-lyrics-tabs[hidden] { display: none; }
+.settings-lyrics-tabs button { min-width: 0; min-height: 36px; padding: 8px 6px; border-radius: 8px; color: #777; font-size: 12px; font-weight: 600; }
+.settings-lyrics-tabs button:hover { color: var(--ink); background: rgba(255,255,255,.6); }
+.settings-lyrics-tabs button[aria-selected="true"] { color: var(--red); background: #fff; box-shadow: 0 2px 7px rgba(30,25,25,.06); }
+.settings-lyrics-tabs button:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.playback-settings-group + .playback-settings-group { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.playback-settings-group > .setting-row { min-height: 60px; border-bottom: 0; }
+.playback-settings-group .repeat-setting-block { padding-top: 8px; }
+.playback-restore-summary { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; padding: 14px; border-radius: 12px; background: #f6f5f3; }
+.playback-restore-summary > div { flex: 1; min-width: 0; }
+.playback-restore-summary strong { display: block; color: var(--ink); font-size: 13px; font-weight: 600; }
+.playback-restore-summary p { margin: 6px 0 0; color: #858387; font-size: 11px; line-height: 1.6; }
+.playback-restore-summary > span { flex: none; padding: 4px 7px; border-radius: 6px; color: var(--red); background: var(--red-soft); font-size: 10px; }
 .settings-volume-row { height: 66px; display: grid; grid-template-columns: 35px 1fr 42px; gap: 12px; align-items: center; }
 .settings-volume-row .volume-icon { width: 34px; height: 34px; display: grid; place-items: center; color: var(--red); border-radius: 10px; background: var(--red-soft); }
 .settings-volume-row svg { width: 17px; }

@@ -1010,7 +1010,7 @@ ipcMain.handle('assistant:complete', async (_event, payload) => {
   const config = await readAssistantConfig();
   const model = String(config.model || '').trim();
   const baseUrl = String(config.baseUrl || '').trim();
-  if (!model || !baseUrl) throw new Error('请先在设置中完成 Yuvis 配置');
+  if (!model || !baseUrl) throw new Error('请先在“设置 → AI 助手”中填写模型信息');
   const messages = normalizedAssistantMessages(payload?.messages);
   const tools = Array.isArray(payload?.tools) ? payload.tools.slice(0, 30) : [];
   const controller = new AbortController();
