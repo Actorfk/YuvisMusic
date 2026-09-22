@@ -129,9 +129,15 @@ h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .now-playing-page { position: fixed; left: calc(var(--workspace-edge) + var(--sidebar-width) + var(--workspace-gap)); right: var(--workspace-edge); top: calc(var(--titlebar-height) + var(--workspace-edge)); bottom: calc(96px + var(--workspace-edge)); z-index: 25; display: flex; align-items: flex-end; padding: 0; margin: 0; border-radius: var(--panel-radius); overflow: hidden; background: transparent; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
 .now-playing-page[hidden] { display: none; }
 .now-playing-page.open { opacity: 1; pointer-events: auto; background: transparent; }
-.now-playing-sheet { width: 100%; height: 100%; border-radius: var(--panel-radius); background: linear-gradient(135deg, #efeeea 0%, #faf9f7 48%, #f0eeea 100%); display: grid; grid-template-columns: minmax(300px, .9fr) minmax(330px, 1.1fr); align-items: center; gap: clamp(32px, 5vw, 76px); padding: clamp(38px, 5vw, 70px); overflow: hidden; position: relative; box-shadow: 0 18px 48px rgba(25,20,20,.14); transform: translateY(calc(100% + 26px)); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
+.now-playing-sheet {
+  --player-surface-background: radial-gradient(ellipse at 12% 24%, rgba(226,189,170,.65), transparent 57%), radial-gradient(ellipse at 88% 82%, rgba(165,185,208,.52), transparent 60%), radial-gradient(ellipse at 68% 8%, rgba(255,253,247,.94), transparent 56%), linear-gradient(125deg, #e8ddd4 0%, #f6f2ed 46%, #e1e6ed 100%);
+  width: 100%; height: 100%; border-radius: var(--panel-radius); background: var(--player-surface-background); display: grid; grid-template-columns: minmax(300px, .9fr) minmax(330px, 1.1fr); align-items: center; gap: clamp(32px, 5vw, 76px); padding: clamp(38px, 5vw, 70px); overflow: hidden; position: relative; isolation: isolate; box-shadow: 0 18px 48px rgba(40,35,48,.12); transform: translateY(calc(100% + 26px)); transition: transform .38s cubic-bezier(.2,.8,.2,1);
+}
 .now-playing-page.open .now-playing-sheet { transform: translateY(0); }
-.now-playing-sheet::before { content: ""; position: absolute; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb),.12), transparent 68%); left: -170px; top: -180px; }
+.now-playing-sheet::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(155deg, rgba(255,255,255,.52), transparent 38%, rgba(104,115,137,.06)); }
+/* A static fine grain and edge light add depth without animating the backdrop. */
+.now-playing-sheet::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; opacity: .045; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23grain)' opacity='.65' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); background-size: 180px 180px; }
+body:not(.fullscreen-lyrics) .now-playing-sheet::before { box-shadow: inset 0 1px 0 rgba(255,255,255,.8), inset 0 0 0 1px rgba(255,255,255,.38); border-radius: inherit; }
 .player-page-close { position: absolute; right: 22px; top: 19px; z-index: 5; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: #777; background: rgba(255,255,255,.64); border: 1px solid rgba(0,0,0,.05); }
 .player-page-close:hover { color: var(--red); background: #fff; }
 .player-page-close svg { width: 18px; height: 18px; display: block; }
@@ -141,8 +147,8 @@ h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .player-page-fullscreen .fullscreen-exit-icon { display: none; }
 body.fullscreen-lyrics .player-page-fullscreen .fullscreen-enter-icon { display: none; }
 body.fullscreen-lyrics .player-page-fullscreen .fullscreen-exit-icon { display: block; }
-.detail-art-stage { min-height: 390px; position: relative; display: grid; place-items: center; }
-.detail-halo { position: absolute; width: 320px; height: 320px; border-radius: 50%; background: rgba(var(--accent-rgb),.08); filter: blur(2px); }
+.detail-art-stage { min-height: 390px; position: relative; z-index: 1; display: grid; place-items: center; }
+.detail-halo { position: absolute; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,250,238,.8), rgba(190,149,133,.16) 48%, transparent 72%); filter: blur(24px); pointer-events: none; }
 .detail-cover { width: min(25vw, 310px); aspect-ratio: 1; border-radius: 22px; z-index: 2; background: linear-gradient(145deg, #242328, #0e0e10); background-position: center; background-size: cover; display: grid; place-items: center; box-shadow: 0 30px 60px rgba(27,21,21,.24); color: var(--red); font-size: 70px; transform: translateX(-22px); }
 .detail-cover span { filter: drop-shadow(0 5px 10px rgba(0,0,0,.3)); }
 .detail-vinyl { width: min(22vw, 276px); aspect-ratio: 1; border-radius: 50%; position: absolute; right: -12px; background: repeating-radial-gradient(circle, #18181b 0, #18181b 3px, #28282c 4px, #141416 6px); box-shadow: 0 25px 45px rgba(0,0,0,.24); animation: spin 12s linear infinite; animation-play-state: paused; }
@@ -150,8 +156,6 @@ body.is-playing .detail-vinyl { animation-play-state: running; }
 .detail-vinyl::before { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: var(--red); box-shadow: inset 0 0 0 12px rgba(0,0,0,.09); }
 .detail-vinyl::after { content: ""; position: absolute; z-index: 1; width: 10px; height: 10px; left: 50%; top: 50%; border-radius: 50%; background: #08080a; box-shadow: 0 0 0 2px rgba(255,255,255,.12), inset 0 1px 2px rgba(255,255,255,.08); translate: -50% -50%; }
 .detail-content { min-width: 0; position: relative; z-index: 2; }
-.detail-kicker { position: absolute; top: 24px; left: 28px; z-index: 4; font-size: 10px; letter-spacing: .18em; color: var(--red); font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.detail-kicker i { width: 18px; height: 1px; background: var(--red); }
 .detail-content h2 { font-size: clamp(31px, 3vw, 45px); letter-spacing: -.055em; line-height: 1.1; margin: 0 0 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail-artist { font-size: 17px; color: #636166; margin: 0; }
 .detail-album { font-size: 12px; color: #999; margin: 7px 0 0; }
@@ -196,8 +200,6 @@ body.fullscreen-lyrics .now-playing-sheet { border-radius: 0; color: #f8fbff; ba
 body.fullscreen-lyrics .now-playing-sheet::before { width: 620px; height: 620px; left: -260px; top: -300px; background: radial-gradient(circle, rgba(125,185,255,.2), transparent 70%); }
 body.fullscreen-lyrics .player-page-close, body.fullscreen-lyrics .player-page-fullscreen { top: 26px; color: rgba(242,247,255,.74); border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.07); backdrop-filter: blur(16px); }
 body.fullscreen-lyrics .player-page-close:hover, body.fullscreen-lyrics .player-page-fullscreen:hover { color: #fff; background: rgba(255,255,255,.14); }
-body.fullscreen-lyrics .detail-kicker { top: 32px; left: 38px; color: #91c7ff; }
-body.fullscreen-lyrics .detail-kicker i { background: #91c7ff; }
 body.fullscreen-lyrics .detail-art-stage { min-height: min(72vh, 720px); }
 body.fullscreen-lyrics .detail-halo { width: min(35vw, 520px); height: min(35vw, 520px); background: rgba(100,169,255,.14); filter: blur(12px); }
 body.fullscreen-lyrics .detail-cover { width: min(28vw, 430px); border-radius: 30px; color: #82bfff; box-shadow: 0 42px 90px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.08); }
@@ -224,14 +226,12 @@ body.fullscreen-lyrics .lyric-translation, body.fullscreen-lyrics .detail-lyrics
 body.fullscreen-lyrics .lyrics-empty { color: rgba(220,231,246,.48); }
 body.fullscreen-lyrics .lyrics-empty strong { color: #f6f9ff; }
 
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .now-playing-sheet { color: var(--ink); background: linear-gradient(135deg, #efeeea 0%, #faf9f7 48%, #f0eeea 100%); grid-template-columns: minmax(300px, .9fr) minmax(330px, 1.1fr); gap: clamp(32px, 5vw, 76px); padding: clamp(38px, 5vw, 70px); }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .now-playing-sheet::before { width: 420px; height: 420px; left: -170px; top: -180px; background: radial-gradient(circle, rgba(var(--accent-rgb),.12), transparent 68%); }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .now-playing-sheet { color: var(--ink); background: var(--player-surface-background); grid-template-columns: minmax(300px, .9fr) minmax(330px, 1.1fr); gap: clamp(32px, 5vw, 76px); padding: clamp(38px, 5vw, 70px); }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .now-playing-sheet::before { width: auto; height: auto; inset: 0; background: linear-gradient(155deg, rgba(255,255,255,.52), transparent 38%, rgba(104,115,137,.06)); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .player-page-close, body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .player-page-fullscreen { top: 19px; color: #777; border-color: rgba(0,0,0,.05); background: rgba(255,255,255,.64); backdrop-filter: none; }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .player-page-close:hover, body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .player-page-fullscreen:hover { color: var(--red); background: #fff; }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-kicker { top: 24px; left: 28px; color: var(--red); }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-kicker i { background: var(--red); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-art-stage { min-height: 390px; }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-halo { width: 320px; height: 320px; background: rgba(var(--accent-rgb),.08); filter: blur(2px); }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-halo { width: 360px; height: 360px; background: radial-gradient(ellipse, rgba(255,250,238,.8), rgba(190,149,133,.16) 48%, transparent 72%); filter: blur(24px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-cover { width: min(25vw, 310px); border-radius: 22px; color: var(--red); box-shadow: 0 30px 60px rgba(27,21,21,.24); transform: translateX(-22px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-vinyl { width: min(22vw, 276px); box-shadow: 0 25px 45px rgba(0,0,0,.24); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="original"] .detail-content h2 { max-width: none; color: var(--ink); font-size: clamp(31px, 3vw, 45px); }
@@ -277,8 +277,8 @@ body.fullscreen-lyrics[data-fullscreen-lyrics-style="aurora"] .detail-lyrics p.a
 
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .now-playing-sheet { background: radial-gradient(circle at 21% 48%, rgba(205,151,61,.14), transparent 31%), linear-gradient(135deg, #050505, #12100c 54%, #060606); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .now-playing-sheet::before { left: auto; right: -170px; top: -230px; background: radial-gradient(circle, rgba(255,201,105,.16), transparent 68%); }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-kicker, body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-offset-control .lyrics-offset-value { color: #e7b85f; }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-kicker i, body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-source.available i { background: #e7b85f; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-offset-control .lyrics-offset-value { color: #e7b85f; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .lyrics-source.available i { background: #e7b85f; }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-halo { background: rgba(231,184,95,.11); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-cover { filter: saturate(.78) contrast(1.04); box-shadow: 0 42px 90px rgba(0,0,0,.5), 0 0 0 1px rgba(241,200,119,.15); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-vinyl::before { background: linear-gradient(145deg, #d69b36, #f0cc80); }
@@ -288,8 +288,8 @@ body.fullscreen-lyrics[data-fullscreen-lyrics-style="cinema"] .detail-lyrics p.a
 
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .now-playing-sheet { background: radial-gradient(circle at 18% 24%, rgba(255,191,105,.34), transparent 31%), radial-gradient(circle at 82% 77%, rgba(211,66,92,.34), transparent 38%), linear-gradient(145deg, #2a1020, #4b1d2a 48%, #151026); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .now-playing-sheet::before { left: auto; right: -190px; top: -250px; background: radial-gradient(circle, rgba(255,151,91,.3), transparent 68%); filter: blur(16px); }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .detail-kicker, body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-offset-control .lyrics-offset-value { color: #ffc17b; }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .detail-kicker i, body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-source.available i { background: #ffc17b; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-offset-control .lyrics-offset-value { color: #ffc17b; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .lyrics-source.available i { background: #ffc17b; }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .detail-halo { background: linear-gradient(145deg, rgba(255,184,96,.26), rgba(228,77,121,.2)); filter: blur(26px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .detail-cover { box-shadow: 0 42px 90px rgba(32,5,14,.42), 0 0 55px rgba(255,117,96,.16); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="sunset"] .detail-vinyl::before { background: linear-gradient(145deg, #ffad55, #dd416f); }
@@ -301,8 +301,8 @@ body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .now-playing-sheet 
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .now-playing-sheet::before { left: auto; right: -180px; top: -240px; background: radial-gradient(circle, rgba(88,160,240,.22), transparent 68%); filter: blur(14px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .player-page-close, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .player-page-fullscreen { color: #4a6380; border-color: rgba(58,109,166,.12); background: rgba(255,255,255,.45); box-shadow: 0 8px 28px rgba(51,102,159,.08); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .player-page-close:hover, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .player-page-fullscreen:hover { color: #176eca; background: rgba(255,255,255,.75); }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .detail-kicker, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-offset-control .lyrics-offset-value { color: #287ccb; }
-body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .detail-kicker i, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-source.available i { background: #287ccb; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-source.available, body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-offset-control .lyrics-offset-value { color: #287ccb; }
+body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-source.available i { background: #287ccb; }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .detail-halo { background: rgba(77,151,232,.16); filter: blur(22px); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .detail-cover { box-shadow: 0 38px 80px rgba(52,103,159,.22), 0 0 0 1px rgba(255,255,255,.72); }
 body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .detail-content h2 { color: #14233a; }
