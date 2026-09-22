@@ -2382,7 +2382,7 @@ function togglePlay() {
 }
 
 function nextTrack(direction = 1) {
-  const source = state.queue.length ? state.queue : state.library;
+  const source = state.shuffle || state.queue.length ? state.queue : state.library;
   if (!source.length) return;
   if (state.shuffle && source.length > 1) {
     const candidates = source.filter((track) => track.id !== state.currentId);

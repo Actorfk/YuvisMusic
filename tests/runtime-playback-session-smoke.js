@@ -172,6 +172,31 @@ async function main() {
     assert.equal(await evaluate('audio.paused'), true);
     console.log('PASS: missing files, malformed saved data and completed tracks restore safely');
 
+    await evaluate(`state.queue = [state.library[0], state.library[1]];
+      state.shuffle = false; state.repeat = 'all';
+      loadTrack(state.library[0], false); $('#shuffleBtn').click();`);
+    await evaluate("$('#nextBtn').click()");
+    await waitFor('audio.readyState >= 1 && !audio.paused', 'shuffle next playback');
+    assert.equal(await evaluate('currentTrack().title'), 'Bravo');
+    await evaluate("$('#previousBtn').click()");
+    await waitFor('audio.readyState >= 1 && !audio.paused', 'shuffle previous playback');
+    assert.equal(await evaluate('currentTrack().title'), 'Alpha');
+    await evaluate("audio.dispatchEvent(new Event('ended'))");
+    assert.equal(await evaluate('currentTrack().title'), 'Bravo');
+    await evaluate("$('#clearQueueBtn').click(); audio.pause()");
+    const clearedSource = await evaluate('audio.src');
+    await evaluate("$('#nextBtn').click(); $('#previousBtn').click(); audio.dispatchEvent(new Event('ended'))");
+    assert.equal(await evaluate('audio.src'), clearedSource);
+    assert.equal(await evaluate('audio.paused'), true);
+    assert.deepEqual(await evaluate('state.queue'), []);
+    assert.deepEqual(await evaluate('JSON.parse(localStorage.playbackSession).queuePaths'), []);
+    await evaluate('state.queue = [state.library[0]]; nextTrack()');
+    await waitFor('audio.readyState >= 1 && !audio.paused', 'single-song shuffle playback');
+    assert.equal(await evaluate('currentTrack().title'), 'Alpha');
+    assert.deepEqual(await evaluate('state.queue.map(track => track.title)'), ['Alpha']);
+    await evaluate('audio.pause()');
+    console.log('PASS: shuffle buttons and automatic advance stay in the queue; clearing it never starts a library song');
+
     await evaluate("openSettings('playback')");
     await send('Emulation.setDeviceMetricsOverride', { width: 1040, height: 680, deviceScaleFactor: 1, mobile: false });
     await delay(350);

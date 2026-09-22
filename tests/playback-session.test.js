@@ -8,6 +8,51 @@ const renderer = fs.readFileSync(path.join(__dirname, '../src/renderer.js'), 'ut
 const a = { id: 'a', path: 'C:\\Music\\A.wav' };
 const b = { id: 'b', path: 'C:\\Music\\B.wav' };
 
+function navigationContext(queue, currentId = a.id, shuffle = true) {
+  const loaded = [];
+  const context = vm.createContext({
+    state: { queue, currentId, shuffle, library: [a, b, { id: 'outside' }] },
+    loadTrack: (track) => { loaded.push(track); context.state.currentId = track.id; }
+  });
+  vm.runInContext(renderer.slice(renderer.indexOf('function nextTrack('), renderer.indexOf('function toggleFavorite(')), context);
+  return { context, loaded };
+}
+
+test('shuffle next and previous stay in the current queue and avoid the current song', () => {
+  const { context, loaded } = navigationContext([a, b]);
+  for (let index = 0; index < 20; index += 1) context.nextTrack(index % 2 ? -1 : 1);
+  assert.deepEqual(loaded, Array.from({ length: 20 }, (_, index) => index % 2 ? a : b));
+  context.state.queue = [b];
+  context.state.currentId = a.id;
+  context.nextTrack();
+  assert.equal(loaded.at(-1), b, 'Removed current song does not expand the random pool');
+  context.nextTrack(-1);
+  assert.equal(loaded.at(-1), b, 'A single-song queue stays on that song');
+});
+
+test('empty shuffle queue never falls back to the library, including after clearing the queue', () => {
+  const { context, loaded } = navigationContext([]);
+  context.nextTrack();
+  context.nextTrack(-1);
+  assert.equal(loaded.length, 0);
+  context.state.queue = [a, b];
+  context.nextTrack();
+  context.state.queue = [];
+  context.nextTrack();
+  assert.deepEqual(loaded, [b]);
+});
+
+test('sequential playback retains queue order and its existing empty-queue fallback', () => {
+  const { context, loaded } = navigationContext([b, a], a.id, false);
+  context.nextTrack();
+  assert.equal(loaded.at(-1), b);
+  context.nextTrack(-1);
+  assert.equal(loaded.at(-1), a);
+  context.state.queue = [];
+  context.nextTrack();
+  assert.equal(loaded.at(-1), b);
+});
+
 test('invalid saved sessions are ignored and duplicate paths retain their first queue position', () => {
   for (const value of [null, {}, [], { version: 2 }]) assert.equal(normalizePlaybackSession(value), null);
   const saved = normalizePlaybackSession({ version: 1, queuePaths: [b.path, null, ' ', a.path, 'c:/music/b.wav'], currentPath: 7, position: Infinity });
