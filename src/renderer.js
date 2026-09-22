@@ -450,6 +450,7 @@ function updateTrackCoverElements(track) {
   $('.cover-note').style.display = 'none';
   $('#detailCover').style.backgroundImage = `url(${JSON.stringify(track.cover)})`;
   $('#detailCover span').style.display = 'none';
+  playerCoverPalette.update(track.cover);
 }
 
 function pumpCoverLoadQueue() {
@@ -1683,6 +1684,37 @@ function updateRenderedPlaybackState(previousId = null) {
   });
 }
 
+const playerCoverPalette = window.YuvisCoverPalette.createCoverPaletteController({
+  loadPixels: (source) => new Promise((resolve, reject) => {
+    const image = new Image();
+    const finish = (error, pixels) => {
+      clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      error ? reject(error) : resolve(pixels);
+    };
+    const timeout = setTimeout(() => finish(new Error('Cover palette timed out')), 5000);
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 32;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.drawImage(image, 0, 0, 32, 32);
+        finish(null, context.getImageData(0, 0, 32, 32).data);
+      } catch (error) { finish(error); }
+    };
+    image.onerror = () => finish(new Error('Cover palette unavailable'));
+    image.src = source;
+  }),
+  apply: (palette) => {
+    const sheet = $('.now-playing-sheet');
+    for (const name of ['primary', 'secondary']) {
+      if (palette) sheet.style.setProperty(`--cover-${name}`, `rgb(${palette[name].join(', ')})`);
+      else sheet.style.removeProperty(`--cover-${name}`);
+    }
+  }
+});
+
 function renderNowPlaying() {
   const track = currentTrack();
   document.body.classList.toggle('has-playback-failure', Boolean(track && state.failedTracks.has(track.id)));
@@ -1691,6 +1723,7 @@ function renderNowPlaying() {
   $('#detailAlbum').textContent = track ? `${track.album}${track.year ? ` · ${track.year}` : ''}` : 'Yuvis音乐 · 本地播放器';
   $('#detailCover').style.backgroundImage = track?.cover ? `url('${track.cover}')` : '';
   $('#detailCover span').style.display = track?.cover ? 'none' : 'block';
+  playerCoverPalette.update(track?.cover);
   updateLyricsOffsetUI();
 }
 
