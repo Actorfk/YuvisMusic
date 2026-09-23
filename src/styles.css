@@ -126,8 +126,9 @@ h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .icon-button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.72); color: #777; }
 .icon-button:hover { border-color: #d3d0cc; color: var(--ink); background: #fff; }
 
-/* Cover the whole workspace while keeping window and playback controls accessible. */
-.now-playing-page { position: fixed; inset: var(--titlebar-height) 0 96px; z-index: 25; display: flex; align-items: flex-end; padding: 0; margin: 0; border-radius: 0; overflow: hidden; background: transparent; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+/* Cover the workspace and titlebar while keeping playback controls accessible. */
+body.player-page-open .titlebar { visibility: hidden; }
+.now-playing-page { position: fixed; inset: 0 0 96px; z-index: 25; display: flex; align-items: flex-end; padding: 0; margin: 0; border-radius: 0; overflow: hidden; background: transparent; opacity: 0; pointer-events: none; transition: opacity .3s ease; -webkit-app-region: no-drag; }
 .now-playing-page[hidden] { display: none; }
 .now-playing-page.open { opacity: 1; pointer-events: auto; background: transparent; }
 @property --cover-primary { syntax: '<color>'; inherits: true; initial-value: #e2bdaa; }
