@@ -19,6 +19,7 @@
   --sidebar-width: clamp(210px, calc(10vw + 88px), 232px);
   --panel-radius: 22px;
   --titlebar-height: 42px;
+  --titlebar-background: linear-gradient(90deg, #e7e6e3 0%, #ecebe8 48%, #f0efec 100%);
   --player-bar-height: 72px;
   --height-room: clamp(0px, calc(100vh - 780px), 120px);
   --sheet-padding: clamp(38px, 5vw, 70px);
@@ -38,7 +39,7 @@ button { border: 0; background: none; color: inherit; cursor: pointer; }
 svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 .app-shell { height: 100vh; display: grid; grid-template-rows: var(--titlebar-height) 1fr var(--player-bar-height); background: #e9e8e5; }
-.titlebar { background: linear-gradient(90deg, #e7e6e3 0%, #ecebe8 48%, #f0efec 100%); display: flex; align-items: center; padding: 5px 12px 3px 14px; }
+.titlebar { background: var(--titlebar-background); display: flex; align-items: center; padding: 5px 12px 3px 14px; }
 .drag-region { -webkit-app-region: drag; flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; }
 .titlebar-tools { flex: none; min-width: 0; margin-left: 14px; display: flex; align-items: center; gap: 2px; -webkit-app-region: no-drag; }
 .titlebar-tool-button { height: 30px; padding: 0 10px; display: flex; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 8px; color: #625f64; background: transparent; font-size: 12px; font-weight: 600; white-space: nowrap; transition: .17s; }
@@ -140,9 +141,11 @@ body.player-page-open .titlebar { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .now-playing-sheet { transition: none; } }
 .now-playing-page.open .now-playing-sheet { transform: translateY(0); }
-.player-page-drag-region { position: absolute; inset: 0 0 auto; height: 64px; z-index: 4; }
+.player-page-drag-region { position: absolute; inset: 0 0 auto; height: var(--titlebar-height); z-index: 4; display: flex; align-items: center; padding: 5px 12px 3px 14px; background: var(--titlebar-background); border-bottom: 1px solid rgba(35,30,30,.06); }
+.player-page-drag-hint { position: absolute; left: 50%; translate: -50% 0; color: #8a878b; font-size: 11px; }
 .now-playing-page.open .player-page-drag-region { -webkit-app-region: drag; }
 .player-page-close, .player-page-fullscreen, .player-page-style { -webkit-app-region: no-drag; }
+body:not(.fullscreen-lyrics) :is(.player-page-close, .player-page-fullscreen, .player-page-style) { top: 6px; height: 30px; border-radius: 8px; }
 body.fullscreen-lyrics .player-page-drag-region { display: none; }
 .now-playing-sheet::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(155deg, rgba(255,255,255,.52), transparent 38%, rgba(104,115,137,.06)); }
 /* A static fine grain and edge light add depth without animating the backdrop. */
