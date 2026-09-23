@@ -140,6 +140,10 @@ body.player-page-open .titlebar { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .now-playing-sheet { transition: none; } }
 .now-playing-page.open .now-playing-sheet { transform: translateY(0); }
+.player-page-drag-region { position: absolute; inset: 0 0 auto; height: 64px; z-index: 4; }
+.now-playing-page.open .player-page-drag-region { -webkit-app-region: drag; }
+.player-page-close, .player-page-fullscreen, .player-page-style { -webkit-app-region: no-drag; }
+body.fullscreen-lyrics .player-page-drag-region { display: none; }
 .now-playing-sheet::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(155deg, rgba(255,255,255,.52), transparent 38%, rgba(104,115,137,.06)); }
 /* A static fine grain and edge light add depth without animating the backdrop. */
 .now-playing-sheet::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; opacity: .045; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23grain)' opacity='.65' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); background-size: 180px 180px; }
