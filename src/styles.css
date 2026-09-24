@@ -141,6 +141,8 @@ body.player-page-open .titlebar { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .now-playing-sheet { transition: none; } }
 .now-playing-page.open .now-playing-sheet { transform: translateY(0); }
+/* Native drag hit regions must not inherit the sheet's opening transform. */
+.player-page-header { position: absolute; inset: 0 0 auto; height: var(--titlebar-height); z-index: 5; }
 .player-page-drag-region { position: absolute; inset: 0 0 auto; height: var(--titlebar-height); z-index: 4; }
 .now-playing-page.open .player-page-drag-region { -webkit-app-region: drag; }
 .player-page-close, .player-page-fullscreen, .player-page-style { -webkit-app-region: no-drag; }
