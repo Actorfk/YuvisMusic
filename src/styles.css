@@ -142,7 +142,6 @@ body.player-page-open .titlebar { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .now-playing-sheet { transition: none; } }
 .now-playing-page.open .now-playing-sheet { transform: translateY(0); }
 .player-page-drag-region { position: absolute; inset: 0 0 auto; height: var(--titlebar-height); z-index: 4; display: flex; align-items: center; padding: 5px 12px 3px 14px; background: var(--titlebar-background); border-bottom: 1px solid rgba(35,30,30,.06); }
-.player-page-drag-hint { position: absolute; left: 50%; translate: -50% 0; color: #8a878b; font-size: 11px; }
 .now-playing-page.open .player-page-drag-region { -webkit-app-region: drag; }
 .player-page-close, .player-page-fullscreen, .player-page-style { -webkit-app-region: no-drag; }
 body:not(.fullscreen-lyrics) :is(.player-page-close, .player-page-fullscreen, .player-page-style) { top: 6px; height: 30px; border-radius: 8px; }
