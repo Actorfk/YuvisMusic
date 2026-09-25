@@ -304,7 +304,7 @@ function publicAssistantConfig(config) {
   const apiKey = assistantApiKey(config);
   return {
     model: typeof config.model === 'string' ? config.model : '',
-    baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : 'https://api.openai.com/v1',
+    baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : '',
     hasApiKey: Boolean(apiKey),
     apiKeyProtected: Boolean(config.encryptedApiKey)
   };
@@ -985,7 +985,7 @@ ipcMain.handle('assistant:save-config', async (_event, nextConfig) => {
   if (baseUrl) assistantChatEndpoint(baseUrl);
   const saved = {
     model,
-    baseUrl: baseUrl || 'https://api.openai.com/v1'
+    baseUrl
   };
   if (!nextConfig?.clearApiKey) {
     const newApiKey = typeof nextConfig?.apiKey === 'string' ? nextConfig.apiKey.trim() : '';

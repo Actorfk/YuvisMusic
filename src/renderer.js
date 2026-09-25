@@ -236,7 +236,7 @@ const state = {
     presetId: typeof savedEqualizerSettings.presetId === 'string' ? savedEqualizerSettings.presetId : 'builtin:flat'
   },
   equalizerPresets: normalizeEqualizerPresets(savedEqualizerPresets),
-  assistantConfig: { model: '', baseUrl: 'https://api.openai.com/v1', hasApiKey: false, apiKeyProtected: false, loaded: false },
+  assistantConfig: { model: '', baseUrl: '', hasApiKey: false, apiKeyProtected: false, loaded: false },
   assistantModelsRequest: 0,
   assistantMessages: [],
   assistantBusy: false,
@@ -2014,7 +2014,7 @@ function renderAssistantConfig() {
   resetAssistantModels();
   const config = state.assistantConfig;
   $('#assistantModelInput').value = config.model || '';
-  $('#assistantBaseUrlInput').value = config.baseUrl || 'https://api.openai.com/v1';
+  $('#assistantBaseUrlInput').value = config.baseUrl || '';
   $('#assistantApiKeyInput').value = '';
   $('#assistantApiKeyInput').placeholder = config.hasApiKey ? '已保存，留空保持不变' : '输入 API Key（本地模型可留空）';
   $('#assistantKeyStatus').textContent = config.hasApiKey

@@ -4,3 +4,6 @@ out/
 releases/
 *.log
 .DS_Store
+.env
+.env.*
+yuvis-assistant.json
