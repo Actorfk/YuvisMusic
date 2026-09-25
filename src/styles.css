@@ -341,7 +341,26 @@ body.fullscreen-lyrics[data-fullscreen-lyrics-style="glass"] .lyrics-empty stron
 .track-table { border-top: 1px solid var(--line); }
 .virtual-list-spacer { width: 100%; min-height: 0; overflow-anchor: none; pointer-events: none; }
 #trackList, #queueList { overflow-anchor: none; }
-.list-sort-select { max-width: 116px; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--canvas); font: inherit; font-size: 12px; }
+.list-sort { position: relative; flex: none; z-index: 20; }
+.list-sort[hidden], .list-sort-menu[hidden] { display: none; }
+.list-sort-trigger { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: #666; transition: background .15s, border-color .15s; }
+.list-sort-trigger > svg { width: 16px; height: 16px; }
+.list-sort-trigger > span { color: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.list-sort-trigger .sort-chevron { width: 13px; transition: transform .15s; }
+.list-sort-trigger:hover, .list-sort-trigger[aria-expanded="true"] { color: var(--red); border-color: rgba(var(--accent-rgb),.22); background: var(--red-soft); }
+.list-sort-trigger[aria-expanded="true"] .sort-chevron { transform: rotate(180deg); }
+.list-sort-trigger:focus-visible, .list-sort-menu button:focus-visible { outline: 2px solid rgba(var(--accent-rgb),.5); outline-offset: 2px; }
+.list-sort-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 224px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 32px rgba(30,25,25,.13), 0 2px 6px rgba(30,25,25,.04); }
+.list-sort-menu button { width: 100%; display: grid; grid-template-columns: 22px 1fr 16px; align-items: center; gap: 10px; padding: 11px 10px; border-radius: 8px; text-align: left; color: #777; }
+.list-sort-menu button + button { margin-top: 3px; }
+.list-sort-menu button:hover, .list-sort-menu button:focus-visible { background: #f3f2f0; }
+.list-sort-menu button[aria-checked="true"] { background: var(--red-soft); color: var(--red); }
+.list-sort-menu button > svg { width: 19px; height: 19px; }
+.list-sort-menu strong { display: block; color: var(--ink); font-size: 12px; font-weight: 600; }
+.list-sort-menu small { display: block; margin-top: 4px; color: #999; font-size: 10px; }
+.list-sort-menu [aria-checked="true"] strong { color: var(--red); }
+.list-sort-menu .sort-check { width: 15px; visibility: hidden; }
+.list-sort-menu [aria-checked="true"] .sort-check { visibility: visible; }
 #trackList[data-reorderable="true"] .track-row, #queueList .queue-item, #playlistNav .nav-item { cursor: grab; user-select: none; }
 body.list-reordering, body.list-reordering * { cursor: grabbing !important; user-select: none !important; }
 .reorder-insertion-marker { position: fixed; height: 3px; z-index: 1000; pointer-events: none; border-radius: 3px; background: var(--red); box-shadow: 0 0 0 1px var(--canvas); }

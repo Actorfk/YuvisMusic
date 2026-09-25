@@ -140,9 +140,25 @@ async function main() {
     await drag(trackSelector(0), trackSelector(1), true, true);
     assert.deepEqual(await titleOrder(), ['Alpha', 'Charlie'], 'Escape cancels without changing order');
 
-    await evaluate("state.search = ''; renderLibrary(); document.querySelector('#sortSelect').value = 'title-desc'; document.querySelector('#sortSelect').dispatchEvent(new Event('change'));");
+    await evaluate("state.search = ''; renderLibrary(); document.querySelector('#sortMenuBtn').click(); document.querySelector('[data-sort-mode=\"title-desc\"]').click();");
     assert.deepEqual(await titleOrder(), ['Delta', 'Charlie', 'Bravo', 'Alpha']);
-    await evaluate("document.querySelector('#sortSelect').value = 'manual'; document.querySelector('#sortSelect').dispatchEvent(new Event('change'));");
+    await evaluate("document.querySelector('#sortMenuBtn').click();");
+    assert.equal(await evaluate('document.activeElement.dataset.sortMode'), 'title-desc');
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Home', code: 'Home', windowsVirtualKeyCode: 36 });
+    assert.equal(await evaluate('document.activeElement.dataset.sortMode'), 'manual');
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 });
+    assert.equal(await evaluate('document.activeElement.dataset.sortMode'), 'title-asc');
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    assert.deepEqual(await titleOrder(), ['Alpha', 'Bravo', 'Charlie', 'Delta']);
+    assert.equal(await evaluate('document.activeElement.id'), 'sortMenuBtn');
+    assert.equal(await evaluate("document.querySelector('#sortMenu').hidden"), true);
+    await evaluate("document.querySelector('#sortMenuBtn').click();");
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    assert.equal(await evaluate("document.querySelector('#sortMenuBtn').getAttribute('aria-expanded')"), 'false');
+    await evaluate("document.querySelector('#sortMenuBtn').click(); document.querySelector('#searchInput').focus();");
+    assert.equal(await evaluate("document.querySelector('#sortMenu').hidden"), true, 'Leaving the control closes the menu');
+    await evaluate("document.querySelector('#sortMenuBtn').click(); document.querySelector('[data-sort-mode=\"manual\"]').click();");
     assert.deepEqual(await titleOrder(), ['Bravo', 'Alpha', 'Charlie', 'Delta']);
     await send('Page.reload');
     await delay(900);
@@ -187,7 +203,7 @@ async function main() {
     await evaluate("closeQueueMenu(); document.querySelector('.main-content').scrollTop = 0; renderLibrary();");
     await delay(300);
     await send('Emulation.setDeviceMetricsOverride', { width: 1040, height: 680, deviceScaleFactor: 1, mobile: false });
-    const layout = await evaluate("(() => { const select = document.querySelector('#sortSelect').getBoundingClientRect(); const main = document.querySelector('.main-content').getBoundingClientRect(); return { inside: select.left >= main.left && select.right <= main.right, overflow: document.documentElement.scrollWidth > innerWidth }; })()");
+    const layout = await evaluate("(() => { const select = document.querySelector('#sortMenuBtn').getBoundingClientRect(); const main = document.querySelector('.main-content').getBoundingClientRect(); return { inside: select.left >= main.left && select.right <= main.right, overflow: document.documentElement.scrollWidth > innerWidth }; })()");
     assert.deepEqual(layout, { inside: true, overflow: false });
     const compactScreenshot = await send('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(artifactDirectory, 'reorder-compact-ui.png'), Buffer.from(compactScreenshot.data, 'base64'));

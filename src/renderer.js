@@ -1518,6 +1518,33 @@ function setListSortMode(mode) {
   localStorage.setItem('listSortModes', JSON.stringify(state.listSortModes));
 }
 
+function closeSortMenu(restoreFocus = false) {
+  $('#sortMenu').hidden = true;
+  $('#sortMenuBtn').setAttribute('aria-expanded', 'false');
+  if (restoreFocus) $('#sortMenuBtn').focus();
+}
+
+function openSortMenu() {
+  $('#sortMenu').hidden = false;
+  $('#sortMenuBtn').setAttribute('aria-expanded', 'true');
+  $('#sortMenu [aria-checked="true"]').focus();
+}
+
+function renderSortMenu(reorderable) {
+  closeSortMenu($('#sortMenu').contains(document.activeElement));
+  $('#listSort').hidden = !reorderable;
+  const mode = currentListSortMode();
+  $('#sortMenu').querySelectorAll('[data-sort-mode]').forEach((item) => {
+    const selected = item.dataset.sortMode === mode;
+    item.setAttribute('aria-checked', String(selected));
+    if (selected) {
+      const label = item.querySelector('strong').textContent;
+      $('#sortMenuLabel').textContent = label;
+      $('#sortMenuBtn').setAttribute('aria-label', `歌曲排序：${label}`);
+    }
+  });
+}
+
 function playlistTracks(playlist) {
   return (playlist?.trackPaths || []).map((trackPath) => state.trackByPath.get(trackPathKey(trackPath))).filter(Boolean);
 }
@@ -1605,8 +1632,7 @@ function renderLibrary() {
   const reorderable = ['library', 'favorite', 'playlist'].includes(state.view);
   $('#trackList').dataset.reorderable = String(reorderable);
   $('#trackList').title = reorderable ? '拖动歌曲调整顺序，双击播放' : '双击播放';
-  $('#sortSelect').hidden = !reorderable;
-  $('#sortSelect').value = currentListSortMode();
+  renderSortMenu(reorderable);
   renderedLibraryTracks = tracks;
   $('#trackSummary').textContent = `${tracks.length} 首歌曲`;
   $('#libraryBadge').textContent = state.library.length;
@@ -2195,6 +2221,7 @@ async function sendAssistantMessage(prompt) {
 }
 
 function renderView() {
+  closeSortMenu();
   const playlist = activePlaylist();
   const names = state.view === 'playlist'
     ? [playlist?.name || '我的歌单', '歌单歌曲']
@@ -2224,6 +2251,7 @@ function updateNavigationState() {
 }
 
 function openNowPlayingPage() {
+  closeSortMenu();
   const page = $('#nowPlayingPage');
   clearTimeout(state.playerCloseTimer);
   closeQueueMenu();
@@ -2443,6 +2471,7 @@ function updateRange(range, ratio) {
 }
 
 function openModal(modal) {
+  closeSortMenu();
   modal.hidden = false;
 }
 
@@ -3012,11 +3041,51 @@ $('#playAllBtn').addEventListener('click', () => {
   else { commitPlaybackQueue(); showToast('当前列表没有音乐'); }
 });
 $('#clearQueueBtn').addEventListener('click', () => { state.queue = []; commitPlaybackQueue(); });
-$('#sortSelect').addEventListener('change', (event) => {
-  setListSortMode(event.target.value);
-  renderLibrary();
-  showToast({ manual: '已切换为手动排序，可拖动歌曲调整', 'title-asc': '已按标题升序排列', 'title-desc': '已按标题降序排列' }[event.target.value]);
+$('#sortMenuBtn').addEventListener('click', () => {
+  if ($('#sortMenu').hidden) openSortMenu();
+  else closeSortMenu(true);
 });
+$('#sortMenuBtn').addEventListener('keydown', (event) => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openSortMenu();
+});
+$('#sortMenu').addEventListener('click', (event) => {
+  const item = event.target.closest('[data-sort-mode]');
+  if (!item) return;
+  const mode = item.dataset.sortMode;
+  setListSortMode(mode);
+  closeSortMenu(true);
+  renderLibrary();
+  showToast({ manual: '已切换为手动排序，可拖动歌曲调整', 'title-asc': '已按标题升序排列', 'title-desc': '已按标题降序排列' }[mode]);
+});
+$('#sortMenu').addEventListener('keydown', (event) => {
+  event.stopPropagation();
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    if (!event.repeat) event.target.closest('[data-sort-mode]')?.click();
+    return;
+  }
+  if (event.key === 'Escape') { event.preventDefault(); closeSortMenu(true); return; }
+  if (event.key === 'Tab') { closeSortMenu(true); return; }
+  const items = [...$('#sortMenu').querySelectorAll('[data-sort-mode]')];
+  const index = items.indexOf(document.activeElement);
+  let next;
+  if (event.key === 'ArrowDown') next = (index + 1) % items.length;
+  if (event.key === 'ArrowUp') next = (index + items.length - 1) % items.length;
+  if (event.key === 'Home') next = 0;
+  if (event.key === 'End') next = items.length - 1;
+  if (next !== undefined) { event.preventDefault(); items[next].focus(); }
+});
+document.addEventListener('pointerdown', (event) => {
+  if (!$('#listSort').contains(event.target)) closeSortMenu();
+});
+document.addEventListener('focusin', (event) => {
+  if (!$('#listSort').contains(event.target)) closeSortMenu();
+});
+$('.main-content').addEventListener('scroll', () => closeSortMenu());
+window.addEventListener('resize', () => closeSortMenu());
 $('#queueToggleBtn').addEventListener('click', toggleQueueMenu);
 $('#shuffleBtn').addEventListener('click', () => {
   state.shuffle = !state.shuffle;
