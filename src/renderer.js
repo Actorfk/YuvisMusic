@@ -268,11 +268,11 @@ const state = {
 };
 
 const viewNames = {
-  library: ['你的私人音乐空间', '音乐库', '全部音乐'],
-  favorite: ['珍藏每一次心动', '我的喜欢', '喜欢的音乐'],
-  recent: ['让熟悉的旋律再次响起', '最近播放', '播放记录'],
-  assistant: ['你的本地音乐搭档', 'Yuvis 助手', '智能控制与音乐问答'],
-  stats: ['听见你的音乐轨迹', '统计数据', '音乐概览']
+  library: ['音乐库', '全部音乐'],
+  favorite: ['我的喜欢', '喜欢的音乐'],
+  recent: ['最近播放', '播放记录'],
+  assistant: ['Yuvis 助手', '智能控制与音乐问答'],
+  stats: ['统计数据', '音乐概览']
 };
 
 function formatTime(seconds) {
@@ -2197,11 +2197,10 @@ async function sendAssistantMessage(prompt) {
 function renderView() {
   const playlist = activePlaylist();
   const names = state.view === 'playlist'
-    ? ['你亲手整理的声音', playlist?.name || '我的歌单', '歌单歌曲']
+    ? [playlist?.name || '我的歌单', '歌单歌曲']
     : viewNames[state.view] || viewNames.library;
-  $('#viewEyebrow').textContent = names[0];
-  $('#viewTitle').textContent = names[1];
-  $('#sectionTitle').textContent = names[2];
+  $('#viewTitle').textContent = names[0];
+  $('#sectionTitle').textContent = names[1];
   $('.main-header').hidden = false;
   $('.header-actions').hidden = ['stats', 'assistant'].includes(state.view);
   $('#libraryImportBtn').hidden = state.view !== 'library';

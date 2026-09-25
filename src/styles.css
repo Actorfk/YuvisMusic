@@ -111,7 +111,6 @@ body.playlist-file-drop::before { content: "释放文件，添加到当前歌单
 .main-header { min-height: 80px; padding-block: 4px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .main-header > :first-child { min-width: 0; }
 .main-header[hidden], .library-section[hidden] { display: none; }
-.eyebrow { color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .13em; margin: 0 0 5px; text-transform: uppercase; }
 h1 { margin: 0; font-size: 33px; line-height: 1.1; letter-spacing: -.04em; }
 .header-actions { flex: none; display: flex; gap: 10px; align-items: center; }
 .library-import-button { height: 40px; padding: 0 13px; display: flex; align-items: center; gap: 7px; flex: none; border: 1px solid rgba(var(--accent-rgb),.18); border-radius: 8px; color: var(--red); background: var(--red-soft); font-size: 12px; font-weight: 650; white-space: nowrap; }
